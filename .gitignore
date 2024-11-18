@@ -1,0 +1,13 @@
+# dir
+build/
+bin/
+cmake-build-debug/
+cmake-build-release/
+tmp/
+temp/
+.cache/
+.idea/
+
+# file
+*.pdf
+*.csv

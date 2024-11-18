@@ -1,0 +1,18 @@
+{
+    "cmake.configureArgs": [
+        "-DCMAKE_BUILD_TYPE=Debug"
+    ],
+    "terminal.integrated.env.linux": {
+        "PATH": "${env:PATH}",
+        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}",
+        "XDG_SESSION_TYPE": "${env:XDG_SESSION_TYPE}",
+        "QT_QPA_PLATFORM": "xcb"
+    },
+    "cSpell.words": [
+        "Antialiasing",
+        "Astar",
+        "bugprone",
+        "dtheta",
+        "qobject"
+    ]
+}

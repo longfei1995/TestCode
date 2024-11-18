@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "launch test0618",
+            "type": "lldb", // 改为 lldb
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/test0618",
+            "args": [],
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "附加到进程",
+            "type": "lldb", // 改为 lldb
+            "request": "attach",
+            "pid": "${command:pickProcess}",
+            "program": "${workspaceFolder}/bin/test0618"
+        }
+    ]
+}
