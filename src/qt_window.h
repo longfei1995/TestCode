@@ -56,8 +56,8 @@ class GridMapWindow : public QWidget {
 
 public:
   explicit GridMapWindow(QWidget* parent = nullptr);
-  GridMapWindow& operator=(const GridMapWindow&) = delete;
   GridMapWindow(const GridMapWindow&) = delete;
+  GridMapWindow& operator=(const GridMapWindow&) = delete;
   GridMapWindow(GridMapWindow&&) = delete;
   GridMapWindow& operator=(GridMapWindow&&) = delete;
   ~GridMapWindow() override {}
@@ -70,34 +70,39 @@ private slots:
   void setDrawMode(DrawMode mode);
 
 private:
-  void initializeGrid();
+  void initMap();
   void createMenu();
   void createDrawingTools();
-  static const QColor& setColor(GridValue grid_value);
+  static const QColor& getColor(GridValue grid_value);
   // 绘图函数
-  void drawGrid(const Point2D<int>& point, const QColor& color);      // point 为grid坐标
-  void drawPoint(const Point2D<double>& point, const QColor& color);  // point 为meter坐标
+  void drawGrid(const Point2D<int>& point, const QColor& color);                                // point 为grid坐标
+  void drawPoint(const Point2D<double>& point, const QColor& color);                            // point 为meter坐标
   void drawLine(const Point2D<double>& start, const Point2D<double>& end, const QColor& color); // start, end 为meter坐标
   void drawCircle(const Point2D<double>& circle_center, double radius, const QColor& color);    // circle_center 为meter坐标
+  void drawCoordinateSystem(const Point2D<double>& origin, double axis_length = 50.0, const QPen& pen = QPen(Qt::red, 2));
   // 鼠标事件处理函数
-  bool handlePointDrawing(QMouseEvent* event, const QColor& color);
-  bool handleLineDrawing(QMouseEvent* event, const QColor& color);
-  bool handleCircleDrawing(QMouseEvent* event, const QColor& color);
+  bool handlePointDrawing(QMouseEvent* event);
+  bool handleLineDrawing(QMouseEvent* event);
+  bool handleCircleDrawing(QMouseEvent* event);
   void updateStatusLabel(const QString& message);
-
-  bool isValidMousePos(const QPointF& mouse_pos_pixel);
+  // 辅助函数
+  static bool isValidMousePos(const Point2D<double>& mouse_pos_pixel);
+  static void transformMeterToPixel(const Point2D<double>& meter_pos, Point2D<double>& pixel_pos);
+  static void transformMeterToPixel(double meter, double& pixel);
+  static void transformMeterToGrid(const Point2D<double>& meter_pos, Point2D<int>& grid_pos);
+  static void transformPixelToMeter(const Point2D<double>& pixel_pos, Point2D<double>& meter_pos);
   void clearCurrentDrawing();
 
   // 格子定义
-  static const int kGridPerMeter = 10;              // 每米10个格子
+  static const int kGridPerMeter = 10; // 每米10个格子
   static constexpr double kMeterPerCell = 1.0 / kGridPerMeter;
-  static const int kMapWidth = 25 * kGridPerMeter;  // 250格子
-  static const int kMapHeight = 15 * kGridPerMeter; // 150格子
-  static const int kCellPixel = 6;                  // 格子像素
+  static const int kGridMapWidth = 25 * kGridPerMeter;  // 250格子
+  static const int kGridMapHeight = 15 * kGridPerMeter; // 150格子
+  static const int kCellPixel = 6;                      // 格子像素
   DrawMode draw_mode_ = DrawMode::kHighGridPoint;
   bool wait_second_point_ = false;
   // 鼠标位置
-  QPointF mouse_pos_pixel_;
+  Point2D<double> mouse_pos_pixel_;
   Point2D<int> mouse_pos_grid_;
   Point2D<double> mouse_pos_meter_;
   // UI组件
