@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QScrollBar>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <cmath>
@@ -32,12 +33,12 @@ GridMapWindow::GridMapWindow(QWidget* parent) : QWidget(parent) {
 
   // View(视图)相关设置
   view_ = std::make_unique<QGraphicsView>(scene_.get());
-  view_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  view_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  // view_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  // view_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   view_->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
   view_->setRenderHint(QPainter::Antialiasing, false);
   view_->setDragMode(QGraphicsView::RubberBandDrag);
-  view_->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+  view_->setTransformationAnchor(QGraphicsView::NoAnchor);
   view_->setInteractive(true);
 
   // 创建菜单栏（在translate之前）
@@ -45,7 +46,7 @@ GridMapWindow::GridMapWindow(QWidget* parent) : QWidget(parent) {
   createMenu();
 
   // 设置视图变换（放在最后）
-  view_->translate(50, 50);  // 调整视图位置
+  view_->translate(50, 50); // 调整视图位置
 
   // 在视图变换之后绘制坐标系
   drawCoordinateSystem(Point2D<double>{0.0, 0.0}, 2.0, QPen(Qt::red, 2));
@@ -265,7 +266,7 @@ void GridMapWindow::drawCoordinateSystem(const Point2D<double>& origin, double a
           << QPointF(origin_pixel.x + axis_length_pixel - arrow_size * cos(arrow_angle),
                      origin_pixel.y + arrow_size * sin(arrow_angle)) // 箭头右上角
           << QPointF(origin_pixel.x + axis_length_pixel - arrow_size * cos(arrow_angle),
-                     origin_pixel.y - arrow_size * sin(arrow_angle)); // 箭��右下角
+                     origin_pixel.y - arrow_size * sin(arrow_angle)); // 箭头右下角
   scene_->addPolygon(x_arrow, pen, QBrush(pen.color()));
 
   // 绘制Y轴箭头
@@ -320,65 +321,78 @@ void GridMapWindow::clearMap() {
   grid_map_.assign(kGridMapWidth, std::vector<GridValue>(kGridMapHeight, GridValue::kEmpty));
 }
 
+// return true 表示完全由这个函数处理事件，return false 表示将剩下的交给父类处理
 bool GridMapWindow::eventFilter(QObject* obj, QEvent* event) {
-  // todo, 整理此部分逻辑，太混乱
-  if (obj == view_->viewport()) {
-    switch (event->type()) {
-      case QEvent::MouseButtonPress:{ // 鼠标按下
-        auto* mouse_event = dynamic_cast<QMouseEvent*>(event);
-        if (mouse_event->button() == Qt::MiddleButton) {  // 中键按下
-          // 中键移动
-          view_->setDragMode(QGraphicsView::ScrollHandDrag);
-          view_->viewport()->setCursor(Qt::ClosedHandCursor);
+  static bool middleButtonPressed = false;
+  static QPoint lastPos;
+
+  if (obj != view_->viewport()) {
+    return false;
+  }
+
+  if (event->type() == QEvent::MouseButtonPress) {
+    auto* mouse_event = dynamic_cast<QMouseEvent*>(event);
+    if (mouse_event->button() == Qt::MiddleButton) {
+      middleButtonPressed = true;
+      lastPos = mouse_event->pos();
+      view_->viewport()->setCursor(Qt::ClosedHandCursor);
+      // 临时改变拖动模式
+      view_->setDragMode(QGraphicsView::ScrollHandDrag);
+      return true;
+    }
+    else { // 左键或者右键按下事件
+      mouse_pos_pixel_.x = view_->mapToScene(mouse_event->pos()).x();
+      mouse_pos_pixel_.y = view_->mapToScene(mouse_event->pos()).y();
+      if (isValidMousePos(mouse_pos_pixel_)) { // 在地图范围内
+        transformPixelToMeter(mouse_pos_pixel_, mouse_pos_meter_);
+        transformMeterToGrid(mouse_pos_meter_, mouse_pos_grid_);
+        switch (draw_mode_) {
+          case DrawMode::kHighGridPoint:
+          case DrawMode::kLowGridPoint:
+            return handlePointDrawing(mouse_event);
+          case DrawMode::kHighObsLine:
+          case DrawMode::kLowObsLine:
+            return handleLineDrawing(mouse_event);
+          case DrawMode::kHighObsCircle:
+          case DrawMode::kLowObsCircle:
+            return handleCircleDrawing(mouse_event);
         }
-        else {
-          // 左键或者右键
-          mouse_pos_pixel_.x = view_->mapToScene(mouse_event->pos()).x();
-          mouse_pos_pixel_.y = view_->mapToScene(mouse_event->pos()).y();
-          if (isValidMousePos(mouse_pos_pixel_)) { // 在地图范围内
-            transformPixelToMeter(mouse_pos_pixel_, mouse_pos_meter_);
-            transformMeterToGrid(mouse_pos_meter_, mouse_pos_grid_);
-            switch (draw_mode_) {
-              case DrawMode::kHighGridPoint:
-              case DrawMode::kLowGridPoint:
-                return handlePointDrawing(mouse_event);
-              case DrawMode::kHighObsLine:
-              case DrawMode::kLowObsLine:
-                return handleLineDrawing(mouse_event);
-              case DrawMode::kHighObsCircle:
-              case DrawMode::kLowObsCircle:
-                return handleCircleDrawing(mouse_event);
-            }
-          } else {
-            updateStatusLabel("请在地图内绘制");
-          }
-        }
-        break;
       }
-      case QEvent::MouseButtonRelease: {  // 鼠标释放
-        auto* mouse_event = dynamic_cast<QMouseEvent*>(event);
-        if (mouse_event->button() == Qt::MiddleButton) {  // 中键释放
-          // 恢复原来的拖拽模式和光标
-          view_->setDragMode(QGraphicsView::RubberBandDrag);
-          view_->viewport()->setCursor(Qt::ArrowCursor);
-          return true;
-        }
-        break;
+      else {
+        updateStatusLabel("请在地图内绘制");
       }
-      case QEvent::Wheel: {
-        // 鼠标滚轮缩放
-        auto* mouse_event = dynamic_cast<QWheelEvent*>(event);
-        if (mouse_event->modifiers()) {
-          double scaleFactor = mouse_event->angleDelta().y() > 0 ? 1.15 : 1.0 / 1.15;
-          view_->scale(scaleFactor, scaleFactor);
-        }
-        break;
-      }
-      default:
-        return QWidget::eventFilter(obj, event);
     }
   }
-  return QWidget::eventFilter(obj, event);
+  else if (event->type() == QEvent::MouseButtonRelease) {
+    auto* mouse_event = dynamic_cast<QMouseEvent*>(event);
+    if (mouse_event->button() == Qt::MiddleButton) {
+      middleButtonPressed = false;
+      view_->viewport()->setCursor(Qt::ArrowCursor);
+      // 恢复原来的拖动模式
+      view_->setDragMode(QGraphicsView::RubberBandDrag);
+      return true;
+    }
+  }
+  else if (event->type() == QEvent::MouseMove) {
+    if (middleButtonPressed) {
+      auto* mouse_event = dynamic_cast<QMouseEvent*>(event);
+      QPoint delta = mouse_event->pos() - lastPos;
+      // 使用 translate 直接移动视图
+      view_->translate(delta.x(), delta.y());
+      lastPos = mouse_event->pos();
+      return true;
+    }
+  }
+  else if (event->type() == QEvent::Wheel) {
+    auto* wheel_event = dynamic_cast<QWheelEvent*>(event);
+    if (wheel_event->modifiers() & Qt::ControlModifier) { // 鼠标滚轮缩放 + ctrl 键
+      double scaleFactor = wheel_event->angleDelta().y() > 0 ? 1.15 : 1.0 / 1.15;
+      view_->scale(scaleFactor, scaleFactor);
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool GridMapWindow::handlePointDrawing(QMouseEvent* event) {

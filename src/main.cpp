@@ -4,7 +4,6 @@
 #include <memory>
 #include <thread>
 
-#include "osqp.h"
 #include <QApplication>
 #include "qt_window.h"
 

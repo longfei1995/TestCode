@@ -80,7 +80,7 @@ private:
   void drawLine(const Point2D<double>& start, const Point2D<double>& end, const QColor& color); // start, end 为meter坐标
   void drawCircle(const Point2D<double>& circle_center, double radius, const QColor& color);    // circle_center 为meter坐标
   void drawCoordinateSystem(const Point2D<double>& origin, double axis_length = 50.0, const QPen& pen = QPen(Qt::red, 2));
-  // 鼠标事件处理函数
+  // 事件处理函数
   bool handlePointDrawing(QMouseEvent* event);
   bool handleLineDrawing(QMouseEvent* event);
   bool handleCircleDrawing(QMouseEvent* event);

@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(yaml-cpp REQUIRED)
-find_package(osqp REQUIRED)
 
 # Qt预编译
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
@@ -29,4 +28,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${YAML_CPP_INCLUDE_DIR} ${CMA
 
 # 包含库文件
 target_link_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp osqp::osqp Qt5::Widgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp Qt5::Widgets)
