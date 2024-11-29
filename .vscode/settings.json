@@ -1,4 +1,5 @@
 {
+    "cmake.sourceDirectory": "${workspaceFolder}",
     "cmake.configureArgs": [
         "-DCMAKE_BUILD_TYPE=Debug"
     ],
@@ -13,6 +14,7 @@
         "Astar",
         "bugprone",
         "dtheta",
-        "qobject"
+        "qobject",
+        "spdlog"
     ]
 }

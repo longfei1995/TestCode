@@ -1,7 +1,8 @@
 #ifndef HYBRID_A_STAR_H
 #define HYBRID_A_STAR_H
 
-#include "base.h"
+#include "utils/base_type.h"
+#include "utils/base_func.h"
 #include <queue>
 #include <string>
 #include <vector>

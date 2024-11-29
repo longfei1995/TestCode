@@ -1,6 +1,5 @@
 #pragma once
 
-#include "base.h"
 #include <QAction>
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -94,11 +93,6 @@ private:
   void clearCurrentDrawing();
 
   // 格子定义
-  static const int kGridPerMeter = 10; // 每米10个格子
-  static constexpr double kMeterPerCell = 1.0 / kGridPerMeter;
-  static const int kGridMapWidth = 25 * kGridPerMeter;  // 250格子
-  static const int kGridMapHeight = 15 * kGridPerMeter; // 150格子
-  static const int kCellPixel = 6;                      // 格子像素
   DrawMode draw_mode_ = DrawMode::kHighGridPoint;
   bool wait_second_point_ = false;
   // 鼠标位置

@@ -24,8 +24,8 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_FILES})
 # add_executable(${PROJECT_NAME} ${SOURCES})
 
 # 包含头文件
-target_include_directories(${PROJECT_NAME} PRIVATE ${YAML_CPP_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${YAML_CPP_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # 包含库文件
 target_link_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp Qt5::Widgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp Qt5::Widgets)
