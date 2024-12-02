@@ -3,7 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
-#include "utils/logger.h"
+#include "utils/common.h"
 #include <QApplication>
 #include "qt_window.h"
 

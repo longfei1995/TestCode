@@ -1,0 +1,12 @@
+veh_param:
+  wheel_base: 2.8
+  veh_type: "a02"
+
+astar:
+  ds: 0.1
+  dt: 0.1
+  min_speed: 0.0
+  max_speed: 10.0
+  max_accel: 2.0
+  max_steer: 0.5
+  max_iter: 100000

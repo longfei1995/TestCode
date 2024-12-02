@@ -13,8 +13,8 @@ namespace Logger {
 class LoggerInstance {
 private:
   std::shared_ptr<spdlog::logger> logger;
-  static constexpr size_t kMaxSingleFileSize = 1024 * 1024 * 10; // 10MB
-  static constexpr size_t kMaxFiles = 3;                         // 3个文件
+  const size_t kMaxSingleFileSize = 1024 * 1024 * 10; // 10MB
+  const size_t kMaxFiles = 3;                         // 3个文件
   // 私有构造函数
   LoggerInstance() = default;
 

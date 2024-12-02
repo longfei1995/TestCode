@@ -1,9 +1,6 @@
 #ifndef HYBRID_A_STAR_H
 #define HYBRID_A_STAR_H
-
-#include "utils/base_type.h"
-#include "utils/base_func.h"
-#include <queue>
+#include "utils/common.h"
 #include <string>
 #include <vector>
 // 时空状态节点
@@ -45,7 +42,9 @@ private:
   // 离散化状态用于哈希
   std::string getStateIndex(const STNode& s);
 
-  const Params& kParam_;
+  // 参数
+  const VehParam& veh_param_;
+  const AStarParam& astar_param_;
 };
 
 #endif
