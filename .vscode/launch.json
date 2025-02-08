@@ -2,20 +2,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "launch test0618",
-            "type": "lldb", // 改为 lldb
+            "name": "调试程序",
+            "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/test0618",
             "args": [],
-            "stopOnEntry": false,
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "C:/msys64/mingw64/bin;${env:PATH}"
+                }
+            ]
         },
         {
             "name": "附加到进程",
-            "type": "lldb", // 改为 lldb
+            "type": "cppdbg",
             "request": "attach",
-            "pid": "${command:pickProcess}",
-            "program": "${workspaceFolder}/bin/test0618"
+            "program": "${workspaceFolder}/bin/test0618",
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe"
         }
     ]
 }

@@ -16,5 +16,8 @@
         "dtheta",
         "qobject",
         "spdlog"
-    ]
+    ],
+    "cmake.cmakePath": "C:/msys64/mingw64/bin/cmake.exe",
+    "cmake.generator": "MinGW Makefiles",
+    "clangd.path": "C:/msys64/mingw64/bin/clangd.exe"
 }

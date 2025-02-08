@@ -3,7 +3,7 @@ project(test0618)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+find_package(fmt REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 # Qt预编译
@@ -28,4 +28,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${YAML_CPP_INCLUDE_DIR} ${CMA
 
 # 包含库文件
 target_link_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp Qt5::Widgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp Qt5::Widgets fmt::fmt)
