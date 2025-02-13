@@ -9,6 +9,7 @@ find_package(yaml-cpp REQUIRED)
 # Qt预编译
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 set(CMAKE_AUTOMOC ON)
+
 # qt5_wrap_cpp(MOC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/inc/qt_window.h) # 自动MOC失败了，添加手动MOC
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -20,6 +21,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${MOC_FILES})
+
 # 生成可执行文件
 # add_executable(${PROJECT_NAME} ${SOURCES})
 
@@ -29,3 +31,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${YAML_CPP_INCLUDE_DIR} ${CMA
 # 包含库文件
 target_link_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 target_link_libraries(${PROJECT_NAME} PRIVATE yaml-cpp::yaml-cpp Qt5::Widgets fmt::fmt)
+
+add_test(NAME circle_test
+    COMMAND circle_test --gtest_output=xml:circle_test_report.xml)

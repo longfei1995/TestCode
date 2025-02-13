@@ -1,5 +1,6 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}",
+    // "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.sourceDirectory": "${workspaceFolder}/test",
     "cmake.configureArgs": [
         "-DCMAKE_BUILD_TYPE=Debug"
     ],
@@ -19,5 +20,26 @@
     ],
     "cmake.cmakePath": "C:/msys64/mingw64/bin/cmake.exe",
     "cmake.generator": "MinGW Makefiles",
-    "clangd.path": "C:/msys64/mingw64/bin/clangd.exe"
+    "clangd.path": "C:/msys64/mingw64/bin/clangd.exe",
+    // 使用msys2终端
+    "terminal.integrated.defaultProfile.windows": "MSYS2 MinGW64",
+    "terminal.integrated.profiles.windows": {
+        "MSYS2 MinGW64": {
+            "path": "C:\\msys64\\usr\\bin\\bash.exe",
+            "args": [
+                "--login",
+                "-i"
+            ],
+            "env": {
+                "MSYSTEM": "MINGW64",
+                "CHERE_INVOKING": "1",
+                "MSYS2_PATH_TYPE": "inherit",
+                "MINGW_PREFIX": "/mingw64",
+                "MINGW_CHOST": "x86_64-w64-mingw32",
+                "MINGW_PACKAGE_PREFIX": "mingw-w64-x86_64",
+                "PATH": "C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\local\\bin;C:\\msys64\\usr\\bin;C:\\msys64\\bin;${env:PATH}"
+            }
+        }
+    },
+    "cmake.ignoreCMakeListsMissing": true
 }
