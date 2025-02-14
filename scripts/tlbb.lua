@@ -1,10 +1,19 @@
+-- 说明
+-- 1. 适用范围：罗技G502测试通过
+-- 2. 使用方法：
+--      2.1 以管理员身份运行罗技G HUB
+--      2.2 按下罗技鼠标G5键即可启动脚本
+--      2.3 使用过程中切勿将windows锁屏、挂后台、开向日葵（会挤占按键）
+-- 3. 免责说明：
+--      3.1 仅供交流学习，切勿用于其他用途，切勿随意传播，尊重他人劳动成果
+--      3.2 除用户定义区外的内容，勿随意更改，免得脚本报错
 -- 用户自定义区
 local kRideHorseKey = "f8"                              -- 上坐骑快捷键
 local kOpenGlobalMapKey = "m"                           -- 打开全局地图
-local kLocalMapPosition = {x = 169, y = 186}            -- 银铠雪原161, 148坐标
+local kLocalMapPosition = {x = 169, y = 186}            -- 银铠雪原局部坐标
 local kScreenResolution = {x = 2560, y = 1440}          -- 屏幕分辨率
 local kTime = 60 * 3.5                                  -- 洛阳到雪原的时间，unit:s
-local kTime2 = 20                                       -- 辽西到指定坐标kLocalMapPosition的时间
+local kTime2 = 20                                       -- 雪原地图入口到指定坐标（上述的kLocalMapPosition）的时间
 -- 坐标定义（基于logitech坐标原点），请勿更改。
 local kPosInGlobalMap = {x = 33381, y = 11605}          -- 银铠雪原在世界地图坐标
 local kPosLiaoXi = {x = 23833, y = 48969}
@@ -16,6 +25,7 @@ local kHellMengPo = {x = 27289, y = 14700}              -- 地府中孟婆坐标
 local kHellLuoYang = {x = 1664, y = 13562}              -- 点击孟婆后的洛阳坐标
 local kMoveMapEnter = {x = 34303, y = 36408}            -- 是否开启跨场景的确认键
 local kAutoFightButton = {x = 65125, y = 6827}          -- 自动战斗按钮
+
 -- Enable event reporting for mouse button 1
 EnablePrimaryMouseButtonEvents(true)
 -- 添加全局变量
