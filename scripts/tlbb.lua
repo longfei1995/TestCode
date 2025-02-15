@@ -13,10 +13,12 @@
 -- 用户自定义区
 local kRideHorseKey = "f8"                              -- 上坐骑快捷键
 local kOpenGlobalMapKey = "m"                           -- 打开全局地图
-local kLocalMapPosition = {x = 169, y = 186}            -- 银铠雪原局部坐标
+-- local kLocalMapPosition = {x = 89, y = 66}              -- 银铠雪原局部坐标
+local kLocalMapPosition = {x = 172, y = 185}            -- 银铠雪原9孔
 local kScreenResolution = {x = 2560, y = 1440}          -- 屏幕分辨率
 local kTime = 60 * 3.5                                  -- 洛阳到雪原的时间，unit:s
-local kTime2 = 20                                       -- 雪原地图入口到指定坐标（上述的kLocalMapPosition）的时间
+-- local kTime = 1                                      -- 洛阳到雪原的时间，unit:s
+local kTime2 = 40                                       -- 雪原地图入口到指定坐标（上述的kLocalMapPosition）的时间
 -- 坐标定义（基于logitech坐标原点），请勿更改。
 local kPosInGlobalMap = {x = 33381, y = 11605}          -- 银铠雪原在世界地图坐标
 local kPosLiaoXi = {x = 23833, y = 48969}
@@ -31,10 +33,6 @@ local kAutoFightButton = {x = 65125, y = 6827}          -- 自动战斗按钮
 
 -- Enable event reporting for mouse button 1
 EnablePrimaryMouseButtonEvents(true)
--- 添加全局变量
-local is_running = false
-local last_run_time = 0
-local interval = 60 * 60 * 1000  -- 60分钟转换为毫秒
 
 -- 鼠标单击
 function moveAndSingleClicked(logi_x, logi_y)
@@ -190,13 +188,15 @@ function goGlobalMapPos(time)
     
     -- 点击对应的局部坐标地图
     goGamePos(kLocalMapPosition.x, kLocalMapPosition.y)
+    
+    OutputLogMessage("开始局部跑图，需要 %d 秒\n", kTime2)
     -- 局部地图跑图时间
     Sleep(kTime2 * 1000)  
     
     -- 下坐骑，需要读条，等待一下
     pressKey(kRideHorseKey)
     OutputLogMessage("下坐骑完成\n")
-    Sleep(math.random(5000, 5500))
+    Sleep(math.random(1000, 1500))
 
     -- 开始打怪
     moveAndSingleClicked(kAutoFightButton.x, kAutoFightButton.y)
@@ -205,9 +205,9 @@ end
 -- 出地府去洛阳
 function escapeHellToLuoYang()
     OutputLogMessage("开始执行 escapeHellToLuoYang\n")
-    pressKey("escape")
-    Sleep(500)
-    pressKey("escape")
+    -- pressKey("escape")
+    -- Sleep(500)
+    -- pressKey("escape")
 
     -- 单击孟婆
     moveAndSingleClicked(kHellMengPo.x, kHellMengPo.y)
@@ -229,35 +229,25 @@ end
 
 -- 主事件处理函数（修改部分）
 function OnEvent(event, arg)
-    -- 只处理鼠标按钮事件
-    if event == "MOUSE_BUTTON_PRESSED" then
-        OutputLogMessage("Event: %s, arg: %d\n", event, arg)
+    if event == "MOUSE_BUTTON_PRESSED" and arg == 5 then
+        OutputLogMessage("\n=== 脚本已启动 ===\n")
         
-        -- 只在按下按钮5时切换运行状态
-        if arg == 5 then
-            is_running = not is_running
-            OutputLogMessage("Script is_running = %s\n", tostring(is_running))
-            -- 如果启动，记录时间并开始第一次循环
-            if is_running then
-                last_run_time = GetRunningTime()
-                main_loop()
+        while true do
+            OutputLogMessage("\n当前时间: %s\n", GetDate())
+            OutputLogMessage("开始执行主循环\n")
+            main_loop()
+            
+            -- 每次循环重新生成随机等待时间
+            local wait_time = math.random(40, 50)
+            OutputLogMessage("主循环执行完成，等待 %d 分钟后重新执行\n", wait_time)
+            
+            -- 每分钟显示一次时间
+            for i = 1, wait_time do
+                Sleep(60 * 1000)  -- 等待1分钟
+                OutputLogMessage("当前时间: %s，还需等待 %d 分钟\n", 
+                    GetDate(), wait_time - i)
             end
         end
-    end
-    
-    -- 添加定时器检查
-    if is_running then
-        local current_time = GetRunningTime()
-        OutputLogMessage("Today’s date/time is: %s\n", GetDate())
-        OutputLogMessage("elapse_time = %s\n", tostring(current_time - last_run_time))
-        OutputLogMessage("interval = %s\n", tostring(interval))
-        if current_time - last_run_time >= interval then
-            OutputLogMessage("时间间隔已到，开始新的循环\n")
-            main_loop()
-            last_run_time = current_time
-        end
-        -- 添加短暂延时，避免过度占用CPU
-        Sleep(10000)  -- 每10秒检查一次
     end
 end
 
