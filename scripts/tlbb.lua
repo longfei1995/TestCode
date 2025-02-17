@@ -205,9 +205,9 @@ end
 -- 出地府去洛阳
 function escapeHellToLuoYang()
     OutputLogMessage("开始执行 escapeHellToLuoYang\n")
-    -- pressKey("escape")
-    -- Sleep(500)
-    -- pressKey("escape")
+    pressKey("escape")
+    Sleep(500)
+    pressKey("escape")
 
     -- 单击孟婆
     moveAndSingleClicked(kHellMengPo.x, kHellMengPo.y)
