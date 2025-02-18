@@ -15,6 +15,7 @@
         "Astar",
         "bugprone",
         "dtheta",
+        "pyautogui",
         "qobject",
         "spdlog"
     ],
