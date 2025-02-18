@@ -20,12 +20,8 @@ local kTime = 60 * 3.5                                  -- 洛阳到雪原的时
 -- local kTime = 1                                      -- 洛阳到雪原的时间，unit:s
 local kTime2 = 40                                       -- 雪原地图入口到指定坐标（上述的kLocalMapPosition）的时间
 -- 坐标定义（基于logitech坐标原点），请勿更改。
-local kPosInGlobalMap = {x = 33381, y = 11605}          -- 银铠雪原在世界地图坐标
-local kPosLiaoXi = {x = 23833, y = 48969}
-local kAutoFindButton = {x = 63948, y = 11150}          -- 自动寻路按钮
-local kAutoFindLeftDiagBox = {x = 63052, y = 23893}     -- 自动寻路左对话框
-local kAutoFindRightDiagBox = {x = 63820, y = 23893}    -- 自动寻路右对话框
-local kAutoFindMoveButton = {x = 64793, y = 23893}      -- 移动按钮
+local kXueYuanInGlobalMap = {x = 33381, y = 11605}          -- 银铠雪原在世界地图坐标
+local kPosLiaoXi = {x = 23833, y = 48969}               -- 辽西在雪原中的坐标
 local kHellMengPo = {x = 27289, y = 14700}              -- 地府中孟婆坐标
 local kHellLuoYang = {x = 1664, y = 13562}              -- 点击孟婆后的洛阳坐标
 local kMoveMapEnter = {x = 34303, y = 36408}            -- 是否开启跨场景的确认键
@@ -150,13 +146,14 @@ function goGamePos(game_x, game_y)
 end
 
 -- 到达全局地图坐标
-function goGlobalMapPos(time)
-    OutputLogMessage("开始执行 goGlobalMapPos\n")
+function goGlobalMapPos()
+    OutputLogMessage("开始去雪原... \n")
     pressKey("escape")  
-    Sleep(500)
+    Sleep(math.random(500, 1000))
     pressKey("escape")
 
     -- 上坐骑，需要读条，等待一下
+    Sleep(math.random(500, 1000))
     pressKey(kRideHorseKey)
     OutputLogMessage("上坐骑完成\n")
     Sleep(math.random(5000, 5500))
@@ -167,7 +164,7 @@ function goGlobalMapPos(time)
     Sleep(math.random(1000, 1500))
     
     -- 选择对应的地图
-    moveAndSingleClicked(kPosInGlobalMap.x, kPosInGlobalMap.y)
+    moveAndSingleClicked(kXueYuanInGlobalMap.x, kXueYuanInGlobalMap.y)
     OutputLogMessage("选择目标地图完成\n")
     Sleep(math.random(1500, 1700))
     
@@ -178,13 +175,14 @@ function goGlobalMapPos(time)
     
     -- 处理自动寻路确定弹窗
     moveAndSingleClicked(kMoveMapEnter.x, kMoveMapEnter.y)
-    OutputLogMessage("确认跨场景寻路完成，等待 %d 秒到达目的地\n", time)
+    OutputLogMessage("确认跨场景寻路完成，等待 %d 秒到达目的地\n", kTime)
+    Sleep(math.random(500, 1000))
 
     -- 点击TAB，关闭地图
     pressKey("tab")
 
     -- 洛阳跑去雪原的时间
-    Sleep(time * 1000)
+    Sleep(kTime * 1000)
     
     -- 点击对应的局部坐标地图
     goGamePos(kLocalMapPosition.x, kLocalMapPosition.y)
@@ -206,24 +204,25 @@ end
 function escapeHellToLuoYang()
     OutputLogMessage("开始执行 escapeHellToLuoYang\n")
     pressKey("escape")
-    Sleep(500)
+    Sleep(math.random(500, 1000))
     pressKey("escape")
 
     -- 单击孟婆
+    Sleep(math.random(500, 1000))
     moveAndSingleClicked(kHellMengPo.x, kHellMengPo.y)
     OutputLogMessage("单击孟婆完成\n")
     
     -- 等待左侧对话框弹出 && 点击洛阳
-    Sleep(5000)
+    Sleep(math.random(5000, 6000))
     moveAndDoubleClicked(kHellLuoYang.x, kHellLuoYang.y)
     OutputLogMessage("点击洛阳完成\n")
-    Sleep(5000)
+    Sleep(math.random(5000, 6000))
 end
 
 function main_loop()
     OutputLogMessage("开始新一轮循环\n")
     escapeHellToLuoYang()
-    goGlobalMapPos(kTime)
+    goGlobalMapPos()
 end
 
 
@@ -244,8 +243,7 @@ function OnEvent(event, arg)
             -- 每分钟显示一次时间
             for i = 1, wait_time do
                 Sleep(60 * 1000)  -- 等待1分钟
-                OutputLogMessage("当前时间: %s，还需等待 %d 分钟\n", 
-                    GetDate(), wait_time - i)
+                OutputLogMessage("当前时间: %s，还需等待 %d 分钟\n", GetDate(), wait_time - i)
             end
         end
     end
