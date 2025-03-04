@@ -14,12 +14,13 @@ import win32api
 import win32process
 import keyboard
 import numpy as np
+import cv2  # 导入OpenCV库
 # 指定搜索区域, 如果换了分辨率，还需用test01()重新获取， 见pics/example文件夹下的示例
 kRegionAllScreen = (1, 24, 2550, 1366)          # 全屏
 kRegionRightPosition = (2288, 13, 262, 61)      # 右上角的场景位置
 kRegionMonsterWindow = (248, 25, 308, 216)      # 怪物选中后区域
 kRegionBloodBarPosition = (271, 44, 139, 16)    # 血条区域
-
+kRegionMiniMap = (2371, 78, 185, 154)           # 小地图区域
 # 按键
 kKeyAutoAttack = 'w'
 kKeyAutoSelect = 'q'
@@ -119,7 +120,7 @@ class GameHelper:
             except Exception as e:
                 pass
         
-        print(f"在指定区域{region}内未找到图片{pic_path}")
+        # print(f"在指定区域{region}内未找到图片{pic_path}")
         return False, None
 
     def getScreenRegion(self):
@@ -216,34 +217,45 @@ class GameHelper:
         # 设定阈值判断是否存在怪物
         is_monster_alive = red_pixels > 100  # 阈值可能需要调整
         return is_monster_alive
+    
     def is_monster_in_mini_map(self):
-        # 检查小地图是否存在怪物
-        # 截取小地图区域的图像
-        screenshot = pyautogui.screenshot(region=kRegionMiniMap)
-        # 查看图像内是否有绿色的小圆点
-        # todo
+        """检查小地图是否存在怪物"""
+        # 使用findPicInRegion方法来查找预先截取的绿色怪物点图像
+        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, 1, 0.7, False)
+        return has_monster
+
     def autoFightOnce(self):
         """简化版自动战斗功能 - 基于固定位置的血条检测
         """
         # 先选取怪物，看是不是选中了
         self.keyPress(kKeyAutoSelect)
+        print("按下了一次Q")
         time.sleep(max(0.1, random.gauss(0.2, 0.05)))
-        has_monster, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, 3, 0.7)
+        has_monster, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, 1, 0.7)
         if has_monster:
             attack_once = True
-            while True:
+            # 添加开始时间和最大战斗时间
+            start_time = time.time()
+            max_fight_time = 10  # 最多战斗15秒
+            
+            while time.time() - start_time < max_fight_time:
                 is_monster_alive = self.is_monster_alive()
                 if is_monster_alive:
                     # 怪物存活，则进行自动攻击
                     if attack_once:
                         self.keyPress(kKeyAutoAttack)
-                        print("有怪物 && 怪物有血量攻击一次")
+                        print("按下了一次W")
                         attack_once = False
                 else:
+                    print("怪物已死亡，退出战斗循环")
                     break
+                
+            # 如果超时，打印日志
+            if time.time() - start_time >= max_fight_time:
+                print(f"战斗时间超过{max_fight_time}秒，强制退出战斗循环")
+                return
         else:
             return
-        
 
 def test01():
     # 获取屏幕区域
@@ -266,10 +278,16 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
             is_escape_di_fu = game_helper.isInDiFuAndEscape()
             # todo 如果逃离地府成功，那么还要寻路到场景中
         # 检查是否在场景中
-        is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionRightPosition, 1, 0.9, True)
+        is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionRightPosition, 1, 0.9, False)
+        # is_in_scene = True
         if is_in_scene:
-            # todo, 在这里再加一个小地图识别，只有小地图有怪物，才进行战斗
-            game_helper.autoFightOnce()
+            # 在这里再加一个小地图识别，只有小地图有怪物，才进行战斗
+            is_monster_in_mini_map = game_helper.is_monster_in_mini_map()
+            if is_monster_in_mini_map:
+                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图有怪物")
+                game_helper.autoFightOnce()
+            else:
+                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图没有怪物")  
         else:
             print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 不在场景中{scene_name}")
             pic_path = game_helper.save_region_debug_image(kRegionRightPosition)
@@ -279,8 +297,8 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
         time.sleep(max(0.1, random.gauss(0.3, 0.1)))
         
 if __name__ == '__main__':
-    autoFight(scene_name="xiao_yao\\1.png")
-
+    autoFight(scene_name="ming_jiao\\1.png")
+  
 
 
     
