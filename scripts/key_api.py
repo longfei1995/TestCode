@@ -236,7 +236,7 @@ class GameHelper:
             attack_once = True
             # 添加开始时间和最大战斗时间
             start_time = time.time()
-            max_fight_time = 10  # 最多战斗15秒
+            max_fight_time = 3  # 最多战斗15秒
             
             while time.time() - start_time < max_fight_time:
                 is_monster_alive = self.is_monster_alive()
@@ -294,6 +294,7 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
             if pic_path is not None:
                 print(f"保存了当前的场景到：{pic_path}")
         # 休息间隔
+        print(f"当前循环次数: {iter}次")
         time.sleep(max(0.1, random.gauss(0.3, 0.1)))
         
 if __name__ == '__main__':
