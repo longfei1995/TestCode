@@ -1,20 +1,20 @@
-import pyautogui
-import pyperclip
-import random
+# 设置OpenMP环境变量（解决多个OpenMP运行时的冲突问题）
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
+# 操作系统和时间相关
 import time
 import glob
-import os
-import pygetwindow as gw
-from PIL import ImageGrab
-import win32gui
-import win32con
-import win32ui
-from ctypes import windll
-import win32api
-import win32process
+# 随机数生成
+import random
+# 屏幕操作相关
+import pyautogui
+import pyperclip
 import keyboard
+# 数据处理和OCR
 import numpy as np
-import cv2  # 导入OpenCV库
+import easyocr
+
 # 指定搜索区域, 如果换了分辨率，还需用test01()重新获取， 见pics/example文件夹下的示例
 kRegionAllScreen = (1, 24, 2550, 1366)          # 全屏
 kRegionRightPosition = (2288, 13, 262, 61)      # 右上角的场景位置
@@ -28,8 +28,8 @@ kKeyAutoSelect = 'q'
 class GameHelper:
     def __init__(self):
         """初始化GameHelper类"""
-        pass
-        
+        self.current_file_path_ = os.path.dirname(os.path.abspath(__file__))
+                
     def mouseMoveAndOnceClicked(self, screen_x, screen_y):
         """模拟人类真实点击操作，在按下和抬起之间添加随机延迟
     
@@ -86,7 +86,7 @@ class GameHelper:
         time.sleep(max(0.05, random.gauss(0.1, 0.02)))
         self.keyPress('enter')  # 使用自定义的keyPress函数
 
-    def findPicInRegion(self, pic_name:str, region:tuple, find_times:int = 3, confidence: float = 0.8, is_need_save_debug_image:bool = False):
+    def findPicInRegion(self, pic_name:str, region:tuple, confidence: float = 0.8, is_need_save_debug_image:bool = False):
         """在指定区域内查找图片并返回其中心位置
         Args:
             pic_name (str):     图片名字,如person.png
@@ -98,29 +98,27 @@ class GameHelper:
         """
         # 先将搜索区域保存为debug.png用于调试
         if is_need_save_debug_image:
-            self.save_region_debug_image(region)
+            self.saveRegionImage(region)
             
         # 组合绝对路径
-        current_py_file_path = os.path.dirname(os.path.abspath(__file__))
-        pic_path = os.path.join(current_py_file_path, "pics", pic_name)
+        pic_path = os.path.join(self.current_file_path_, "pics", pic_name)
         
-        for i in range(find_times):
-            try:
-                # 在指定区域内查找图片
-                position = pyautogui.locateOnScreen(
-                    image=pic_path, 
-                    confidence=confidence, 
-                    grayscale=False,
-                    region=region  # 指定搜索区域
-                )
-                
-                if position is not None:
-                    center_position = pyautogui.center(position)
-                    return True, center_position
-            except Exception as e:
-                pass
+        try:
+            # 在指定区域内查找图片
+            position = pyautogui.locateOnScreen(
+                image=pic_path, 
+                confidence=confidence, 
+                grayscale=False,
+                region=region  # 指定搜索区域
+            )
+            
+            if position is not None:
+                center_position = pyautogui.center(position)
+                return True, center_position
+        except Exception as e:
+            pass
         
-        # print(f"在指定区域{region}内未找到图片{pic_path}")
+        # print(f"在指定区域{region}内未找到图片{pic_ath}")
         return False, None
 
     def getScreenRegion(self):
@@ -152,11 +150,11 @@ class GameHelper:
 
     def isInDiFuAndEscape(self):
         # 判断是否在地府
-        is_in_di_fu, pic_position = self.findPicInRegion("di_fu\\1.png", kRegionRightPosition, 3, 0.9)
+        is_in_di_fu, pic_position = self.findPicInRegion("di_fu\\1.png", kRegionRightPosition, confidence=0.9)
         if is_in_di_fu:
             print(f"现在时间是{time.strftime('%Y-%m-%d %H:%M:%S')}，在地府")
             # 开始逃离地府
-            is_find_pic, pic_position = self.findPicInRegion("di_fu\\2.png", kRegionAllScreen, 3, 0.7)
+            is_find_pic, pic_position = self.findPicInRegion("di_fu\\2.png", kRegionAllScreen, confidence=0.7)
             if is_find_pic and pic_position is not None:
                 self.mouseMoveAndOnceClicked(pic_position.x, pic_position.y)
                 print("逃离地府成功")
@@ -169,28 +167,29 @@ class GameHelper:
             print("不在地府")
         return False
         
-    def save_region_debug_image(self, region):
-        """保存区域的截图用于调试
+    def saveRegionImage(self, region):
+        """保存区域的截图
         Args:
             region (tuple): 要截图的区域 (left, top, width, height)
+        Returns:
+            PIL.Image.Image: 截图的PIL Image对象
         """
         try:
             # 确保pics目录存在
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            pics_dir = os.path.join(script_dir, "pics\\debug")
-            if not os.path.exists(pics_dir):
-                os.makedirs(pics_dir)
+            save_pics_dir = os.path.join(self.current_file_path_, "pics\\debug")
+            if not os.path.exists(save_pics_dir):
+                os.makedirs(save_pics_dir)
             
             # 截取区域图像
             screenshot = pyautogui.screenshot(region=region)
             
             # 保存图像
             current_time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-            debug_file_path = os.path.join(pics_dir, f"debug_{current_time}.png")
+            debug_file_path = os.path.join(save_pics_dir, f"debug_{current_time}.png")
             screenshot.save(debug_file_path)
             
             # 检查并限制图片数量为10张
-            debug_files = glob.glob(os.path.join(pics_dir, "debug_*.png"))
+            debug_files = glob.glob(os.path.join(save_pics_dir, "debug_*.png"))
             
             # 如果图片超过10张，则删除最早的图片
             if len(debug_files) > 10:
@@ -199,13 +198,13 @@ class GameHelper:
                 # 删除最早的文件(们)，直到剩下10张
                 for old_file in debug_files[:-10]:
                     os.remove(old_file)
-            return debug_file_path
+            return screenshot, debug_file_path
                     
         except Exception as e:
             print(f"保存区域截图时出错: {e}")
-            return None
+            return None, None
 
-    def is_monster_alive(self):
+    def isMonsterAlive(self):
         # 检查怪物是否存活
         # 截取血条区域的图像
         screenshot = pyautogui.screenshot(region=kRegionBloodBarPosition)
@@ -218,10 +217,10 @@ class GameHelper:
         is_monster_alive = red_pixels > 100  # 阈值可能需要调整
         return is_monster_alive
     
-    def is_monster_in_mini_map(self):
+    def isMonsterInMiniMap(self):
         """检查小地图是否存在怪物"""
         # 使用findPicInRegion方法来查找预先截取的绿色怪物点图像
-        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, 1, 0.7, False)
+        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, confidence=0.7, is_need_save_debug_image=False)
         return has_monster
 
     def autoFightOnce(self):
@@ -231,7 +230,7 @@ class GameHelper:
         self.keyPress(kKeyAutoSelect)
         print("按下了一次Q")
         time.sleep(max(0.1, random.gauss(0.2, 0.05)))
-        has_monster, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, 1, 0.7)
+        has_monster, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, confidence=0.7, is_need_save_debug_image=False)
         if has_monster:
             attack_once = True
             # 添加开始时间和最大战斗时间
@@ -239,7 +238,7 @@ class GameHelper:
             max_fight_time = 3  # 最多战斗15秒
             
             while time.time() - start_time < max_fight_time:
-                is_monster_alive = self.is_monster_alive()
+                is_monster_alive = self.isMonsterAlive()
                 if is_monster_alive:
                     # 怪物存活，则进行自动攻击
                     if attack_once:
@@ -257,11 +256,25 @@ class GameHelper:
         else:
             return
 
-def test01():
-    # 获取屏幕区域
-    game_helper = GameHelper()
-    region = game_helper.getScreenRegion()  
-    print(region)
+    def getOCRText(self, image_path):
+        """使用EasyOCR从图像中识别文本"""
+        try:
+            if not os.path.exists(image_path):
+                print(f"错误：图像文件不存在 - {image_path}")
+                return ""
+            
+            # 创建reader对象 - 首次运行会下载模型
+            reader = easyocr.Reader(['ch_sim', 'en'])  # 支持简体中文和英文
+            
+            # 直接从文件路径读取并识别文本
+            result = reader.readtext(image_path)
+            
+            # 提取所有识别到的文本
+            text = ' '.join([item[1] for item in result])
+            return text
+        except Exception as e:
+            print(f"OCR处理出错: {str(e)}")
+            return ""
     
 def autoFight(scene_name:str = "xiao_yao\\1.png"):
     game_helper = GameHelper()
@@ -278,11 +291,10 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
             is_escape_di_fu = game_helper.isInDiFuAndEscape()
             # todo 如果逃离地府成功，那么还要寻路到场景中
         # 检查是否在场景中
-        is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionRightPosition, 1, 0.9, False)
-        # is_in_scene = True
+        is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionRightPosition, 0.9, False)
         if is_in_scene:
             # 在这里再加一个小地图识别，只有小地图有怪物，才进行战斗
-            is_monster_in_mini_map = game_helper.is_monster_in_mini_map()
+            is_monster_in_mini_map = game_helper.isMonsterInMiniMap()
             if is_monster_in_mini_map:
                 print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图有怪物")
                 game_helper.autoFightOnce()
@@ -290,17 +302,33 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
                 print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图没有怪物")  
         else:
             print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 不在场景中{scene_name}")
-            pic_path = game_helper.save_region_debug_image(kRegionRightPosition)
-            if pic_path is not None:
-                print(f"保存了当前的场景到：{pic_path}")
+            _, debug_file_path  = game_helper.saveRegionImage(kRegionRightPosition)
+            if debug_file_path is not None:
+                print(f"保存了当前的场景到：{debug_file_path}")
         # 休息间隔
         print(f"当前循环次数: {iter}次")
         time.sleep(max(0.1, random.gauss(0.3, 0.1)))
         
 if __name__ == '__main__':
-    autoFight(scene_name="ming_jiao\\1.png")
-  
-
-
+    # autoFight(scene_name="ming_jiao\\1.png")
+    # test
+    game_helper = GameHelper()
+    region = game_helper.getScreenRegion()
+    print(region) 
+    # 获取region的截图
+    screenshot, debug_file_path = game_helper.saveRegionImage(region)
+    # 识别截图中的文字
+    text = game_helper.getOCRText(debug_file_path)
+    if text is not None:
+        if "百度" in text:
+            print("识别到了百度热搜")
+            print(text)  
+        else:
+            print(f"识别到其他的文字：{text}")  
+    else:  
+        print("未识别到文字")
+      
     
+
+      
 
