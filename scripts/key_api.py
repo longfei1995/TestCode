@@ -21,8 +21,10 @@ kRegionRightPosition = (2288, 13, 262, 61)      # 右上角的场景位置
 kRegionMonsterWindow = (248, 25, 308, 216)      # 怪物选中后区域
 kRegionBloodBarPosition = (271, 44, 139, 16)    # 血条区域
 kRegionMiniMap = (2371, 78, 185, 154)           # 小地图区域
+kRegionBBHappyBall = (1385, 1296, 36, 29)       # 珍兽快乐球位置
+kRegionBBDrag = (1421, 1296, 37, 28)            # 珍兽吃药位置
 # 按键
-kKeyAutoAttack = 'w'
+kKeyAutoAttack = 'e'
 kKeyAutoSelect = 'q'
 
 class GameHelper:
@@ -166,6 +168,12 @@ class GameHelper:
         else:
             print("不在地府")
         return False
+    
+    def getRegionCenter(self, region):
+        """获取区域的中心坐标"""
+        return pyautogui.center(region)
+    
+
         
     def saveRegionImage(self, region):
         """保存区域的截图
@@ -217,21 +225,34 @@ class GameHelper:
         is_monster_alive = red_pixels > 100  # 阈值可能需要调整
         return is_monster_alive
     
-    def isMonsterInMiniMap(self):
+    def isMonsterInMiniMap(self, confidence):
         """检查小地图是否存在怪物"""
         # 使用findPicInRegion方法来查找预先截取的绿色怪物点图像
-        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, confidence=0.7, is_need_save_debug_image=False)
+        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, confidence=confidence, is_need_save_debug_image=False)
         return has_monster
+    
+    def babyEat(self):
+        """宝宝吃药，吃快乐球"""
+        # 点击宝宝药
+        self.mouseMoveAndOnceClicked(self.getRegionCenter(kRegionBBDrag).x, self.getRegionCenter(kRegionBBDrag).y)
+        # self.save_region_debug_image(kRegionBBDrag)
+        print("点击宝宝吃药")
+        time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+        # 点击快乐球
+        self.mouseMoveAndOnceClicked(self.getRegionCenter(kRegionBBHappyBall).x, self.getRegionCenter(kRegionBBHappyBall).y)
+        # self.save_region_debug_image(kRegionBBHappyBall)
+        print("点击宝宝吃快乐球")
+        time.sleep(max(0.1, random.gauss(0.2, 0.05)))
 
-    def autoFightOnce(self):
+    def autoFightOnce(self, confidence:float = 0.7):
         """简化版自动战斗功能 - 基于固定位置的血条检测
         """
         # 先选取怪物，看是不是选中了
         self.keyPress(kKeyAutoSelect)
-        print("按下了一次Q")
+        print(f"选择怪物{kKeyAutoSelect}")
         time.sleep(max(0.1, random.gauss(0.2, 0.05)))
-        has_monster, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, confidence=0.7, is_need_save_debug_image=False)
-        if has_monster:
+        has_select_target, pic_position = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, confidence=confidence, is_need_save_debug_image=False)
+        if has_select_target:
             attack_once = True
             # 添加开始时间和最大战斗时间
             start_time = time.time()
@@ -243,7 +264,7 @@ class GameHelper:
                     # 怪物存活，则进行自动攻击
                     if attack_once:
                         self.keyPress(kKeyAutoAttack)
-                        print("按下了一次W")
+                        print(f"攻击一次{kKeyAutoAttack}")
                         attack_once = False
                 else:
                     print("怪物已死亡，退出战斗循环")
@@ -276,25 +297,27 @@ class GameHelper:
             print(f"OCR处理出错: {str(e)}")
             return ""
     
-def autoFight(scene_name:str = "xiao_yao\\1.png"):
+def autoFight(scene_name:str = "xiao_yao\\1.png", confidence:float = 0.6):
     game_helper = GameHelper()
     # 执行前等待5秒
     for i in range(5):
         time.sleep(1)
         print(f"剩余{5 - i}秒执行脚本....")
-    iter:int = 0    # 监控循环次数
+    iter:int = -1    # 监控循环次数
     while True:    
-        # 每100次循环，检查是否在地府
+        # 每500次循环，检查是否在地府 && 宝宝吃药
         iter += 1
-        if iter % 100 == 0:
+        if iter % 500 == 0:
             iter = 0
             is_escape_di_fu = game_helper.isInDiFuAndEscape()
+            game_helper.babyEat()
             # todo 如果逃离地府成功，那么还要寻路到场景中
         # 检查是否在场景中
         is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionRightPosition, 0.9, False)
         if is_in_scene:
-            # 在这里再加一个小地图识别，只有小地图有怪物，才进行战斗
-            is_monster_in_mini_map = game_helper.isMonsterInMiniMap()
+            # 只有小地图有怪物，才进行战斗
+            is_monster_in_mini_map = game_helper.isMonsterInMiniMap(confidence=confidence)
+            is_monster_in_mini_map = True
             if is_monster_in_mini_map:
                 print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图有怪物")
                 game_helper.autoFightOnce()
@@ -310,23 +333,23 @@ def autoFight(scene_name:str = "xiao_yao\\1.png"):
         time.sleep(max(0.1, random.gauss(0.3, 0.1)))
         
 if __name__ == '__main__':
-    # autoFight(scene_name="ming_jiao\\1.png")
+    autoFight(scene_name="fan_zei.png", confidence=0.6)
     # test
-    game_helper = GameHelper()
-    region = game_helper.getScreenRegion()
-    print(region) 
-    # 获取region的截图
-    screenshot, debug_file_path = game_helper.saveRegionImage(region)
-    # 识别截图中的文字
-    text = game_helper.getOCRText(debug_file_path)
-    if text is not None:
-        if "百度" in text:
-            print("识别到了百度热搜")
-            print(text)  
-        else:
-            print(f"识别到其他的文字：{text}")  
-    else:  
-        print("未识别到文字")
+    # game_helper = GameHelper()
+    # region = game_helper.getScreenRegion()
+    # print(region) 
+    # # 获取region的截图
+    # screenshot, debug_file_path = game_helper.saveRegionImage(region)
+    # # 识别截图中的文字
+    # text = game_helper.getOCRText(debug_file_path)
+    # if text is not None:
+    #     if "百度" in text:
+    #         print("识别到了百度热搜")
+    #         print(text)  
+    #     else:
+    #         print(f"识别到其他的文字：{text}")  
+    # else:  
+    #     print("未识别到文字")
       
     
 
