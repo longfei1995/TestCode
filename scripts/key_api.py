@@ -15,8 +15,9 @@ import keyboard
 import numpy as np
 import easyocr
 import cv2
+from skimage.metrics import structural_similarity as ssim
 
-# 指定搜索区域, 如果换了分辨率，还需用test01()重新获取， 见pics/example文件夹下的示例
+# 指定搜索区域, 如果换了分辨率，还需重新获取， 见pics/example文件夹下的示例
 kRegionAllScreen = (1, 24, 2550, 1366)          # 全屏
 kRegionRightPosition = (2380, 26, 156, 50)      # 右上角的场景位置
 kRegionMonsterWindow = (248, 25, 308, 216)      # 怪物选中后区域
@@ -393,7 +394,76 @@ class GameHelper:
             # 去到坐标
             self.autoFind(x, y)
             time.sleep(20)
+    
+    def rideHorse(self):
+        """上坐骑"""
+        # 点击坐骑
+        screen_pos = pyautogui.Point(x=2534, y=478)
+        self.mouseMoveAndOnceClicked(screen_pos.x, screen_pos.y)
+        time.sleep(5)
+    
+    def getDownHorse(self):
+        """下坐骑"""
+        # 点击坐骑
+        screen_pos = pyautogui.Point(x=2534, y=478)
+        self.mouseMoveAndOnceClicked(screen_pos.x, screen_pos.y)
+        time.sleep(1)
+
+    def isPersonStop(self, max_wait_time=180):
+        """持续监测直到人物停止移动，使用更简单的像素差异比较方法
         
+        Args:
+            max_wait_time (int): 最大等待时间(秒)，默认3分钟
+            
+        Returns:
+            bool: 是否成功检测到人物静止
+        """
+        region = (874, 311, 137, 114)  # 人物周围区域
+        start_time = time.time()
+        
+        print(f"开始持续监测人物状态，最长等待{max_wait_time}秒...")
+        
+        while time.time() - start_time < max_wait_time:
+            images = []
+            
+            # 连续截取3张图片，每次间隔2秒
+            for i in range(3):
+                screenshot = pyautogui.screenshot(region=region)
+                img_array = np.array(screenshot)
+                images.append(img_array)
+                
+                # 保存最新一组截图用于调试
+                debug_dir = os.path.join(self.current_file_path_, "pics\\debug")
+                if not os.path.exists(debug_dir):
+                    os.makedirs(debug_dir)
+                debug_path = os.path.join(debug_dir, f"movement_check_{i}.png")
+                screenshot.save(debug_path)
+                
+                if i < 2:  # 最后一次不需要等待
+                    time.sleep(2)  # 间隔缩短到2秒使检测更快响应
+            
+            # 计算图像间的平均绝对差异
+            diff1_2 = np.mean(np.abs(images[0].astype(float) - images[1].astype(float)))
+            diff2_3 = np.mean(np.abs(images[1].astype(float) - images[2].astype(float)))
+            diff1_3 = np.mean(np.abs(images[0].astype(float) - images[2].astype(float)))
+            
+            avg_diff = (diff1_2 + diff2_3 + diff1_3) / 3
+            elapsed_time = time.time() - start_time
+            
+            # 差异小于阈值视为静止
+            threshold = 15.0  # 阈值可调整
+            print(f"已等待{elapsed_time:.1f}秒，图片平均差异: {avg_diff:.2f}，阈值: {threshold}")
+            
+            if avg_diff < threshold:
+                print(f"检测到人物已静止！总用时: {elapsed_time:.1f}秒")
+                return True
+            
+            # 等待1秒再开始下一轮检测
+            time.sleep(1)
+        
+        print(f"等待超时({max_wait_time}秒)，人物仍未静止")
+        return False
+
 def autoFight(scene_name:str, confidence, x:str, y:str):
     game_helper = GameHelper()
     # 执行前等待5秒
@@ -436,23 +506,74 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
         # 休息间隔
         print(f"当前循环次数: {iter}次")
         time.sleep(max(0.1, random.gauss(0.2, 0.1)))
-        
-if __name__ == '__main__':
-       
-    # autoFight(scene_name=kSceneList["xiao_yao"]["scene_name"], confidence=kSceneList["xiao_yao"]["confidence"])
-    autoFight("ming_jiao\\1.png", confidence=0.8, x="115", y="143")  
-    # test
-    # for i in range(3):
-    #     time.sleep(1)
-    #     print(f"剩余{3 - i}秒执行脚本....")
-    # game_helper = GameHelper()
-    # game_helper.autoFind(x="115", y="143")  
-    # test get region
-    # game_helper = GameHelper()
-    # region = game_helper.getScreenRegion()
-    # center = game_helper.getRegionCenter(region)
-    # print(center)  
-  
-        
 
+def autoDigSeed():
+    game_helper = GameHelper()
+    cheng_huang_diag_box_region = (4, 185, 263, 372)
+    cheng_huang_pos = pyautogui.Point(x=1229, y=719)
+    kun_wu_sheng_wang_ren_wu_pos = pyautogui.Point(x=129, y=463)
+    kun_wu_sheng_wang_ren_wu_pos2 = pyautogui.Point(x=116, y=279)
+    accept_button_pos = pyautogui.Point(x=27, y=535)
+    complete_button_pos = pyautogui.Point(x=65, y=535) 
+    # 采集红果
+    hong_guo_pos = pyautogui.Point(x=1282, y=703)
+    ren_wu_box_region = (2297, 366, 195, 86)
+    ti_jiao_ling_yao_pos = pyautogui.Point(x=82, y=310)
+    pet_pos = pyautogui.Point(x=2385, y=409)
+    ding_wei_fu_pos = pyautogui.Point(x=1260, y=1358) # 放在D旁边
+    
+    # 采集红果  
+    # 上坐骑 -> 点击乘黄长老 -> 点击左侧任务 -> 点击接受任务 -> 寻路到红果位置(57, 204) -> 下坐骑
+    game_helper.rideHorse()  
+    game_helper.mouseMoveAndOnceClicked(cheng_huang_pos.x, cheng_huang_pos.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(kun_wu_sheng_wang_ren_wu_pos.x, kun_wu_sheng_wang_ren_wu_pos.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(kun_wu_sheng_wang_ren_wu_pos2.x, kun_wu_sheng_wang_ren_wu_pos2.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(accept_button_pos.x, accept_button_pos.y)
+    time.sleep(1)
+    game_helper.autoFind(x="57", y="204")
+    time.sleep(random.uniform(22, 25)) # 寻路时间
+    game_helper.getDownHorse()
+    # 点击红果3次 -> 上坐骑 -> 选择任务框的第二个坐标 -> 点击提交灵药 -> 下坐骑 -> 点击定位符
+    for i in range(3):
+        game_helper.mouseMoveAndOnceClicked(hong_guo_pos.x, hong_guo_pos.y)
+        time.sleep(5)
+    game_helper.rideHorse()
+    game_helper.mouseMoveAndOnceClicked(pet_pos.x, pet_pos.y)
+
+    # 使用改进后的人物静止检测替代固定的60秒等待
+    print("开始等待人物移动到目标位置...")
+    if game_helper.isPersonStop():
+        print("人物已到达目标位置")
+    else:
+        print("等待超时，强制继续后续动作")
+
+    game_helper.getDownHorse()
+    game_helper.mouseMoveAndOnceClicked(ti_jiao_ling_yao_pos.x, ti_jiao_ling_yao_pos.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(ding_wei_fu_pos.x, ding_wei_fu_pos.y)
+    time.sleep(5)
+    # 点击乘黄长老 -> 点击左侧任务 -> 点击完成
+    game_helper.mouseMoveAndOnceClicked(cheng_huang_pos.x, cheng_huang_pos.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(kun_wu_sheng_wang_ren_wu_pos.x, kun_wu_sheng_wang_ren_wu_pos.y)
+    time.sleep(1)
+    game_helper.mouseMoveAndOnceClicked(complete_button_pos.x, complete_button_pos.y)
+    time.sleep(2)
+
+if __name__ == '__main__':
+    # autoFight("ming_jiao\\1.png", confidence=0.8, x="97", y="73")  
+    # test
+    
+    # game_helper = GameHelper()    
+    # region = game_helper.getScreenRegion()
+    # region_center = game_helper.getRegionCenter(region)
+    # print(region_center)
+    time.sleep(2)
+    autoDigSeed()  
+      
+                
   
+    
