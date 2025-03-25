@@ -11,11 +11,11 @@ import random
 import pyautogui
 import pyperclip
 import keyboard
-# 数据处理和OCR
+# 图片处理
 import numpy as np
-import easyocr
 import cv2
-from skimage.metrics import structural_similarity as ssim
+# 数据类
+from dataclasses import dataclass
 
 # 指定搜索区域, 如果换了分辨率，还需重新获取， 见pics/example文件夹下的示例
 kRegionAllScreen = (1, 24, 2550, 1366)          # 全屏
@@ -30,12 +30,35 @@ kRegionYiZhanLeftDiag = (1, 178, 282, 393)      # 驿站左侧框位置
 # 按键
 kKeyAutoAttack = 'e'
 kKeyAutoSelect = 'q'
-# 场景列表字典, confidence代表小地图是否有怪物的置信度
-kYiZhanList = {
-    "qi_ta_men_pai": "da_li\\4.png",
-    "ming_jiao": "da_li\\5.png",
-}
-
+# 图片列表
+@dataclass
+class ImagePath:
+    class Other:
+        monster_target: str = "other\\monster_target.png"   # 怪物选中后区域
+        monster_dot: str = "other\\monster_dot.png"         # 小地图怪物点
+        fan_zei: str = "other\\fan_zei.png"                 # 反贼
+        guang_tou: str = "other\\guang_tou.png"             # 光头
+        auto_find_1 = "other\\auto_find_1.png"              # 自动寻路
+        auto_find_2 = "other\\auto_find_2.png"              # 下拉框按钮
+        di_fu_1 = "other\\di_fu_1.png"                      # 右上角"地府"图片
+        di_fu_2 = "other\\di_fu_2.png"                      # 地府光圈
+    class DaLi:
+        one: str = "da_li\\1.png"       # 右上角"大理"图片
+        two: str = "da_li\\2.png"       # 崔逢九传送
+        three: str = "da_li\\3.png"     # todo, 暂无  
+        four: str = "da_li\\4.png"      # 带我去其他门派
+        five: str = "da_li\\5.png"      # 门派-明教
+    class MingJiao:
+        one: str = "ming_jiao\\1.png"   # 右上角"明教"图片
+        two: str = "ming_jiao\\2.png"   # 石刚-打怪
+        three: str = "ming_jiao\\3.png" # 去抵抗围剿
+    class EMei:
+        one: str = "e_mei\\1.png"       # 右上角"峨眉"图片
+    class WuDang:
+        one: str = "wu_dang\\1.png"     # 右上角"武当"图片
+    class XiaoYao:
+        one: str = "xiao_yao\\1.png"     # 右上角"逍遥"图片
+        
 class GameHelper:
     def __init__(self):
         """初始化GameHelper类"""
@@ -195,11 +218,11 @@ class GameHelper:
 
     def isInDiFuAndEscape(self):
         # 判断是否在地府
-        is_in_di_fu = self.isInScene("di_fu\\1.png", confidence=0.9)
+        is_in_di_fu = self.isInScene(ImagePath.Other.di_fu_1, confidence=0.9)
         if is_in_di_fu:
             print(f"现在时间是{time.strftime('%Y-%m-%d %H:%M:%S')}，在地府")
             # 开始逃离地府
-            is_find_pic, pic_region = self.findPicInRegion("di_fu\\2.png", kRegionAllScreen, confidence=0.7)
+            is_find_pic, pic_region = self.findPicInRegion(ImagePath.Other.di_fu_2, kRegionAllScreen, confidence=0.7)
             if is_find_pic and pic_region is not None:
                 pic_center_position = self.getRegionCenter(pic_region)
                 self.mouseMoveAndOnceClicked(pic_center_position.x, pic_center_position.y)
@@ -270,7 +293,7 @@ class GameHelper:
     def isMonsterInMiniMap(self, confidence):
         """检查小地图是否存在怪物"""
         # 使用findPicInRegion方法来查找预先截取的绿色怪物点图像
-        has_monster, _ = self.findPicInRegion("monster_dot.png", kRegionMiniMap, confidence=confidence, is_need_save_debug_image=False)
+        has_monster, _ = self.findPicInRegion(ImagePath.Other.monster_dot, kRegionMiniMap, confidence=confidence, is_need_save_debug_image=False)
         return has_monster
     
     def babyEat(self):
@@ -293,7 +316,7 @@ class GameHelper:
         self.keyPress(kKeyAutoSelect)
         print(f"选择怪物{kKeyAutoSelect}")
         time.sleep(max(0.1, random.gauss(0.2, 0.05)))
-        has_select_target, _ = self.findPicInRegion("monster_target.png", kRegionMonsterWindow, confidence=confidence, is_need_save_debug_image=False)
+        has_select_target, _ = self.findPicInRegion(ImagePath.Other.monster_target, kRegionMonsterWindow, confidence=confidence, is_need_save_debug_image=False)
         if has_select_target:
             attack_once = True
             # 添加开始时间和最大战斗时间
@@ -329,7 +352,7 @@ class GameHelper:
         # 打开自动寻路
         self.keyPress("`")  # 打开自动寻路~
         time.sleep(max(1, random.gauss(2, 0.05)))
-        has_find_pic, pic_region = self.findPicInRegion("auto_find\\1.png", kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
+        has_find_pic, pic_region = self.findPicInRegion(ImagePath.Other.auto_find_1, kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
         if has_find_pic and pic_region is not None:
             print(f"自动寻路到坐标{x}, {y}")
             x1 = pic_region.left + pic_region.width * (3/8)
@@ -357,35 +380,34 @@ class GameHelper:
         self.keyPress("`")  # 打开自动寻路~
         time.sleep(1)
         # 自动寻路中点击崔逢九 && 双击
-        _, pic_region = self.findPicInRegion("da_li\\2.png", kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
+        _, pic_region = self.findPicInRegion(ImagePath.DaLi.two, kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
         pic_center_position = self.getRegionCenter(pic_region)
         self.mouseMoveAndDoubleClicked(pic_center_position.x, pic_center_position.y)
         time.sleep(3)
         print("点击崔逢九完成")
         # 点击下拉框
-        _, down_pic_ming_jiao = self.findPicInRegion("auto_find\\2.png", kRegionYiZhanLeftDiag, confidence=0.6, is_need_save_debug_image=True)
+        _, down_pic_ming_jiao = self.findPicInRegion(ImagePath.Other.auto_find_2, kRegionYiZhanLeftDiag, confidence=0.6, is_need_save_debug_image=True)
         down_pic_center_position = self.getRegionCenter(down_pic_ming_jiao)
         self.mouseMoveAndOnceClicked(down_pic_center_position.x, down_pic_center_position.y)
         print("点击下拉框完成")
         time.sleep(1)
-        if scene_name == "ming_jiao":
+        if scene_name == ImagePath.MingJiao.one:
             # 点击其他门派
-            _, qi_ta_men_pai = self.findPicInRegion(kYiZhanList["qi_ta_men_pai"], kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
+            _, qi_ta_men_pai = self.findPicInRegion(ImagePath.DaLi.four, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
             qi_ta_men_pai_pos = self.getRegionCenter(qi_ta_men_pai)
             self.mouseMoveAndOnceClicked(qi_ta_men_pai_pos.x, qi_ta_men_pai_pos.y)
-            print("点击其他门派完成")
+            print("点击带我去其他门派完成")
             # 点击明教
-            _, ming_jiao = self.findPicInRegion(kYiZhanList["ming_jiao"], kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
+            _, ming_jiao = self.findPicInRegion(ImagePath.DaLi.five, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
             ming_jiao_pos = self.getRegionCenter(ming_jiao)
             self.mouseMoveAndOnceClicked(ming_jiao_pos.x, ming_jiao_pos.y)
-            print("点击明教完成")
-            time.sleep(2)   # 2s中过场景
-            # 点击明教打怪的人, 95, 161
-            # self.autoFind(x="95", y="161", is_press_esc=False)
+            print("点击门派-明教完成")
+            time.sleep(2)   # 2s从大理到明教
+            # 点击明教打怪的人 - 石刚
             shi_gang = pyautogui.Point(1148, 513)
             self.mouseMoveAndOnceClicked(shi_gang.x, shi_gang.y)
             print("点击石刚完成")
-            time.sleep(3)
+            time.sleep(3)   # 移动到石刚的时间
             # 点击抵抗围剿
             di_kang_wei_jiu = pyautogui.Point(71, 313)
             self.mouseMoveAndOnceClicked(di_kang_wei_jiu.x, di_kang_wei_jiu.y)
@@ -393,7 +415,10 @@ class GameHelper:
             time.sleep(2) # 过场景
             # 去到坐标
             self.autoFind(x, y)
-            time.sleep(20)
+            if self.isPersonStop(max_wait_time=180, threshold=15.0):
+                print("人物已到达目标位置")
+            else:
+                print("等待超时，强制继续后续动作")
     
     def rideHorse(self):
         """上坐骑"""
@@ -409,7 +434,7 @@ class GameHelper:
         self.mouseMoveAndOnceClicked(screen_pos.x, screen_pos.y)
         time.sleep(1)
 
-    def isPersonStop(self, max_wait_time=180):
+    def isPersonStop(self, max_wait_time=180, threshold=15.0):
         """持续监测直到人物停止移动，使用更简单的像素差异比较方法
         
         Args:
@@ -451,7 +476,6 @@ class GameHelper:
             elapsed_time = time.time() - start_time
             
             # 差异小于阈值视为静止
-            threshold = 15.0  # 阈值可调整
             print(f"已等待{elapsed_time:.1f}秒，图片平均差异: {avg_diff:.2f}，阈值: {threshold}")
             
             if avg_diff < threshold:
@@ -466,33 +490,35 @@ class GameHelper:
 
 def autoFight(scene_name:str, confidence, x:str, y:str):
     game_helper = GameHelper()
-    # 执行前等待5秒
+    # 执行前等待
     for i in range(2):
         time.sleep(1)
         print(f"剩余{2 - i}秒执行脚本....")
     iter:int = -1    # 监控循环次数
     while True:    
-        # 每500次循环，检查是否在地府 && 宝宝吃药
         iter += 1
         # 每500次循环检查是否在地府
         if iter % 500 == 0:
             is_escape_di_fu = game_helper.isInDiFuAndEscape()
             # 检查是否在大理
-            is_in_dali = game_helper.isInScene("da_li\\1.png", confidence=0.8)
+            is_in_dali = game_helper.isInScene(ImagePath.DaLi.one, confidence=0.8)
             if is_in_dali:
-                game_helper.fromDaliToSomeWhere("ming_jiao", x, y)
-        # 每2000次循环，吃药，回到地点并重置iter
+                if (scene_name == ImagePath.MingJiao.one):
+                    game_helper.fromDaliToSomeWhere(ImagePath.MingJiao.one, x, y)
+        # 每2000次循环: 吃药，回到地点并重置iter
         if iter % 2000 == 0:
-            game_helper.autoFind(x, y)
-            time.sleep(5)
             iter = 0
             game_helper.babyEat()
+            game_helper.autoFind(x, y)
+            if game_helper.isPersonStop(max_wait_time=180, threshold=15.0):
+                print("人物已到达目标位置")
+            else:
+                print("等待超时，强制继续后续动作")
         # 检查是否在场景中
         is_in_scene = game_helper.isInScene(scene_name)
         if is_in_scene:
             # 只有小地图有怪物，才进行战斗
             is_monster_in_mini_map = game_helper.isMonsterInMiniMap(confidence=confidence)
-            # is_monster_in_mini_map = True
             if is_monster_in_mini_map:
                 print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图有怪物")
                 game_helper.autoFightOnce()
@@ -500,9 +526,6 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
                 print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图没有怪物")  
         else:
             print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 不在场景中{scene_name}")
-            # _, debug_file_path  = game_helper.saveRegionImage(kRegionRightPosition)
-            # if debug_file_path is not None:
-            #     print(f"保存了当前的场景到：{debug_file_path}")
         # 休息间隔
         print(f"当前循环次数: {iter}次")
         time.sleep(max(0.1, random.gauss(0.2, 0.1)))
@@ -564,9 +587,8 @@ def autoDigSeed():
     time.sleep(2)
 
 if __name__ == '__main__':
-    # autoFight("ming_jiao\\1.png", confidence=0.8, x="97", y="73")  
+    autoFight(ImagePath.MingJiao.one, confidence=0.8, x="97", y="73")  
     # test
-    
     # game_helper = GameHelper()    
     # region = game_helper.getScreenRegion()
     # region_center = game_helper.getRegionCenter(region)
