@@ -27,6 +27,34 @@ kRegionBBHappyBall = (1385, 1296, 36, 29)       # 珍兽快乐球位置
 kRegionBBDrag = (1421, 1296, 37, 28)            # 珍兽吃药位置
 kRegionAutoFind = (2357, 229, 196, 322)         # 自动寻路区域  
 kRegionYiZhanLeftDiag = (1, 178, 282, 393)      # 驿站左侧框位置
+kRegionEnter = (984, 460, 554, 404)             # 是否进入不加杀气场景  
+kRegionPackage = (1887, 645, 649, 702)          # 背包栏位置
+kRegionChengHuang = (0, 133, 409, 574)      # 乘黄对话框
+# 背包中，各个项目相对于背包栏图标的像素：
+@dataclass
+class Bias:
+    dao_ju: pyautogui.Point = pyautogui.Point(x=14, y=37)
+    cai_liao: pyautogui.Point = pyautogui.Point(x=61, y=37)
+    ren_wu: pyautogui.Point = pyautogui.Point(x=100, y=37)
+    cell_0_0: pyautogui.Point = pyautogui.Point(x=7, y=62)
+    cell_0_1: pyautogui.Point = pyautogui.Point(x=47, y=62)
+    cell_0_2: pyautogui.Point = pyautogui.Point(x=87, y=62)
+    cell_0_3: pyautogui.Point = pyautogui.Point(x=127, y=62)
+    cell_0_4: pyautogui.Point = pyautogui.Point(x=167, y=62)
+    cell_0_5: pyautogui.Point = pyautogui.Point(x=207, y=62)
+    cell_0_6: pyautogui.Point = pyautogui.Point(x=247, y=62)
+    cell_0_7: pyautogui.Point = pyautogui.Point(x=287, y=62)
+    cell_0_8: pyautogui.Point = pyautogui.Point(x=327, y=62)
+    cell_0_9: pyautogui.Point = pyautogui.Point(x=367, y=62)
+    cell_0_10: pyautogui.Point = pyautogui.Point(x=407, y=62)
+    cell_1_0: pyautogui.Point = pyautogui.Point(x=7, y=102)
+    cell_1_1: pyautogui.Point = pyautogui.Point(x=47, y=102)
+    cell_1_2: pyautogui.Point = pyautogui.Point(x=87, y=102)
+    cell_1_3: pyautogui.Point = pyautogui.Point(x=127, y=102)    
+    cell_1_4: pyautogui.Point = pyautogui.Point(x=167, y=102)
+    cell_1_5: pyautogui.Point = pyautogui.Point(x=207, y=102)
+    
+
 # 按键
 kKeyAutoAttack = 'e'
 kKeyAutoSelect = 'q'
@@ -42,6 +70,9 @@ class ImagePath:
         auto_find_2 = "other\\auto_find_2.png"              # 下拉框按钮
         di_fu_1 = "other\\di_fu_1.png"                      # 右上角"地府"图片
         di_fu_2 = "other\\di_fu_2.png"                      # 地府光圈
+        enter = "other\\que_ding.png"                       # 确认进入不加杀气场景
+        bao_guo: str = "other\\bao_guo.png"                 # 背包栏图标
+        ti_jiao_ling_yao: str = "other\\ti_jiao_ling_yao.png" # 提交灵药
     class DaLi:
         one: str = "da_li\\1.png"       # 右上角"大理"图片
         two: str = "da_li\\2.png"       # 崔逢九传送
@@ -64,17 +95,13 @@ class GameHelper:
         """初始化GameHelper类"""
         self.current_file_path_ = os.path.dirname(os.path.abspath(__file__))
                 
-    def mouseMoveAndOnceClicked(self, screen_x, screen_y):
+    def mouseMoveAndOnceClicked(self, screen_x, screen_y, button:str = 'left'):
         """模拟人类真实点击操作，在按下和抬起之间添加随机延迟
     
     Args:
         screen_x (int): 屏幕x坐标
         screen_y (int): 屏幕y坐标
     """
-        # 使用高斯分布添加随机像素偏移，更接近人类行为
-        screen_x += int(random.gauss(0, 2))
-        screen_y += int(random.gauss(0, 2))
-        
         # 移动鼠标到目标位置，使用高斯分布的随机时间
         move_duration = max(0.1, random.gauss(0.2, 0.05))
         pyautogui.moveTo(screen_x, screen_y, duration=move_duration)
@@ -83,22 +110,18 @@ class GameHelper:
         time.sleep(max(0.01, random.gauss(0.07, 0.02)))
         
         # 按下鼠标左键
-        pyautogui.mouseDown(button='left')
+        pyautogui.mouseDown(button=button)
         
         # 随机按住时间，使用高斯分布
         time.sleep(max(0.01, random.gauss(0.05, 0.03)))
         
         # 释放鼠标左键
-        pyautogui.mouseUp(button='left')
+        pyautogui.mouseUp(button=button)
         
         # 操作完成后的随机短暂停顿，使用高斯分布
         time.sleep(max(0.05, random.gauss(0.15, 0.03)))
 
     def mouseMoveAndDoubleClicked(self, screen_x, screen_y):
-        # 添加随机偏移
-        screen_x += int(random.gauss(0, 2))
-        screen_y += int(random.gauss(0, 2))
-        
         # 移动鼠标到目标位置
         move_duration = max(0.1, random.gauss(0.2, 0.05))
         pyautogui.moveTo(screen_x, screen_y, duration=move_duration)
@@ -372,7 +395,18 @@ class GameHelper:
                 self.keyPress("ESC")
         else:
             print("未找到自动寻路区域")
-    
+            
+    def moveSceneConfirm(self):
+        """移动场景确认"""
+        is_find, enter = self.findPicInRegion(ImagePath.Other.enter, kRegionEnter, confidence=0.8, is_need_save_debug_image=True)
+        if is_find:
+            enter_pos = self.getRegionCenter(enter)
+            self.mouseMoveAndOnceClicked(enter_pos.x, enter_pos.y)
+            print("点击确认进入不加杀气场景完成")
+        else:
+            print("未找到确认进入不加杀气场景")
+        
+        
     def fromDaliToSomeWhere(self, scene_name:str, x:str, y:str):
         """从大理到某个地方"""
         print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 在大理")
@@ -412,6 +446,8 @@ class GameHelper:
             di_kang_wei_jiu = pyautogui.Point(71, 313)
             self.mouseMoveAndOnceClicked(di_kang_wei_jiu.x, di_kang_wei_jiu.y)
             print("点击抵抗围剿完成")
+            # 点击确认进入不加杀气场景
+            self.moveSceneConfirm()
             time.sleep(2) # 过场景
             # 去到坐标
             self.autoFind(x, y)
@@ -443,7 +479,7 @@ class GameHelper:
         Returns:
             bool: 是否成功检测到人物静止
         """
-        region = (874, 311, 137, 114)  # 人物周围区域
+        region = (1217, 542, 118, 90)  # 人物周围区域
         start_time = time.time()
         
         print(f"开始持续监测人物状态，最长等待{max_wait_time}秒...")
@@ -453,6 +489,7 @@ class GameHelper:
             
             # 连续截取3张图片，每次间隔2秒
             for i in range(3):
+                current_time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
                 screenshot = pyautogui.screenshot(region=region)
                 img_array = np.array(screenshot)
                 images.append(img_array)
@@ -461,7 +498,21 @@ class GameHelper:
                 debug_dir = os.path.join(self.current_file_path_, "pics\\debug")
                 if not os.path.exists(debug_dir):
                     os.makedirs(debug_dir)
-                debug_path = os.path.join(debug_dir, f"movement_check_{i}.png")
+                
+                # 限制movement_开头的图片数量为最多3张
+                movement_files = glob.glob(os.path.join(debug_dir, "movement_*.png"))
+                if len(movement_files) >= 3:
+                    # 按文件创建时间排序
+                    movement_files.sort(key=os.path.getctime)
+                    # 删除最早的文件，直到只剩2张(为了给即将保存的新图片腾出空间)
+                    for old_file in movement_files[:-2]:
+                        try:
+                            os.remove(old_file)
+                            print(f"删除旧的监测图片: {os.path.basename(old_file)}")
+                        except Exception as e:
+                            print(f"删除文件时出错: {e}")
+                
+                debug_path = os.path.join(debug_dir, f"movement_{current_time}_{i}.png")
                 screenshot.save(debug_path)
                 
                 if i < 2:  # 最后一次不需要等待
@@ -530,23 +581,30 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
         print(f"当前循环次数: {iter}次")
         time.sleep(max(0.1, random.gauss(0.2, 0.1)))
 
-def autoDigSeed():
+def autoDigSeed(iter:int = 1):
+    # 如果iter为奇数，则采集红果，否则采集种子
+    is_dig_red = True
+    if iter % 2 == 1:
+        # 奇数次采集红果
+        is_dig_red = True
+    else:
+        # 偶数次打怪
+        is_dig_red = False
     game_helper = GameHelper()
-    cheng_huang_diag_box_region = (4, 185, 263, 372)
+    # 乘黄长老坐标
     cheng_huang_pos = pyautogui.Point(x=1229, y=719)
     kun_wu_sheng_wang_ren_wu_pos = pyautogui.Point(x=129, y=463)
     kun_wu_sheng_wang_ren_wu_pos2 = pyautogui.Point(x=116, y=279)
     accept_button_pos = pyautogui.Point(x=27, y=535)
     complete_button_pos = pyautogui.Point(x=65, y=535) 
-    # 采集红果
+    # 红果坐标
     hong_guo_pos = pyautogui.Point(x=1282, y=703)
-    ren_wu_box_region = (2297, 366, 195, 86)
-    ti_jiao_ling_yao_pos = pyautogui.Point(x=82, y=310)
     pet_pos = pyautogui.Point(x=2385, y=409)
     ding_wei_fu_pos = pyautogui.Point(x=1260, y=1358) # 放在D旁边
-    
-    # 采集红果  
-    # 上坐骑 -> 点击乘黄长老 -> 点击左侧任务 -> 点击接受任务 -> 寻路到红果位置(57, 204) -> 下坐骑
+    # 打怪相关坐标
+    package_pic_pos = pyautogui.Point(x=1517, y=1377)
+    monster_pos = pyautogui.Point(x=149, y=259)
+    # 通用流程：上坐骑 -> 点击乘黄长老 -> 点击左侧任务 -> 点击接受任务
     game_helper.rideHorse()  
     game_helper.mouseMoveAndOnceClicked(cheng_huang_pos.x, cheng_huang_pos.y)
     time.sleep(1)
@@ -555,29 +613,81 @@ def autoDigSeed():
     game_helper.mouseMoveAndOnceClicked(kun_wu_sheng_wang_ren_wu_pos2.x, kun_wu_sheng_wang_ren_wu_pos2.y)
     time.sleep(1)
     game_helper.mouseMoveAndOnceClicked(accept_button_pos.x, accept_button_pos.y)
-    time.sleep(1)
-    game_helper.autoFind(x="57", y="204")
-    time.sleep(random.uniform(22, 25)) # 寻路时间
-    game_helper.getDownHorse()
-    # 点击红果3次 -> 上坐骑 -> 选择任务框的第二个坐标 -> 点击提交灵药 -> 下坐骑 -> 点击定位符
-    for i in range(3):
-        game_helper.mouseMoveAndOnceClicked(hong_guo_pos.x, hong_guo_pos.y)
-        time.sleep(5)
-    game_helper.rideHorse()
-    game_helper.mouseMoveAndOnceClicked(pet_pos.x, pet_pos.y)
-
-    # 使用改进后的人物静止检测替代固定的60秒等待
-    print("开始等待人物移动到目标位置...")
-    if game_helper.isPersonStop():
-        print("人物已到达目标位置")
+    time.sleep(3)
+    if is_dig_red:
+        print("开始采集红果")
+        ## 1. 寻路到红果位置(57, 204) -> 下坐骑  
+        game_helper.autoFind(x="57", y="204")
+        time.sleep(random.uniform(22, 25))      # 到红果的时间
+        game_helper.getDownHorse()
+        ## 2. 点击红果3次 -> 上坐骑 -> 选择任务框的第二个坐标
+        # 2.1 点击红果3次
+        for i in range(3):
+            game_helper.mouseMoveAndOnceClicked(hong_guo_pos.x, hong_guo_pos.y)
+            time.sleep(5)
+        # 2.2 上坐骑
+        game_helper.rideHorse()
+        # 2.3 选择任务框的第二个坐标
+        game_helper.mouseMoveAndOnceClicked(pet_pos.x, pet_pos.y)
+        print("开始等待人物移动到目标位置...")
+        if game_helper.isPersonStop():
+            print("人物已到达目标位置")
+        else:
+            print("等待超时，强制继续后续动作")
+        ## 3. 下坐骑 -> 点击提交灵药 -> 点击定位符
+        # 3.1 下坐骑
+        game_helper.getDownHorse()
+        # 3.2 点击提交灵药
+        _, ti_jiao_ling_yao_region = game_helper.findPicInRegion(ImagePath.Other.ti_jiao_ling_yao, kRegionChengHuang, confidence=0.8, is_need_save_debug_image=True)
+        ti_jiao_ling_yao_pos = game_helper.getRegionCenter(ti_jiao_ling_yao_region)
+        game_helper.mouseMoveAndOnceClicked(ti_jiao_ling_yao_pos.x, ti_jiao_ling_yao_pos.y)
+        time.sleep(1)
+        # 3.3 点击定位符
+        game_helper.mouseMoveAndOnceClicked(ding_wei_fu_pos.x, ding_wei_fu_pos.y)
+        time.sleep(8)
     else:
-        print("等待超时，强制继续后续动作")
-
-    game_helper.getDownHorse()
-    game_helper.mouseMoveAndOnceClicked(ti_jiao_ling_yao_pos.x, ti_jiao_ling_yao_pos.y)
-    time.sleep(1)
-    game_helper.mouseMoveAndOnceClicked(ding_wei_fu_pos.x, ding_wei_fu_pos.y)
-    time.sleep(5)
+        print("开始打怪物")
+        # 1. 点击背包栏 -> 点击任务栏 -> 右击任务栏第一格物品
+        # 1.1 点击背包栏
+        game_helper.mouseMoveAndOnceClicked(package_pic_pos.x, package_pic_pos.y)
+        time.sleep(1)
+        _, origin_region = game_helper.findPicInRegion(ImagePath.Other.bao_guo, kRegionPackage, confidence=0.8, is_need_save_debug_image=True)
+        origin_region_center = game_helper.getRegionCenter(origin_region)
+        ren_wu_lan_pos = pyautogui.Point(x=origin_region_center.x + Bias.ren_wu.x, y=origin_region_center.y + Bias.ren_wu.y)
+        cell_0_0_pos = pyautogui.Point(x=origin_region_center.x + Bias.cell_0_0.x, y=origin_region_center.y + Bias.cell_0_0.y)
+        # 1.2 点击任务栏
+        game_helper.mouseMoveAndOnceClicked(ren_wu_lan_pos.x, ren_wu_lan_pos.y)
+        time.sleep(1)
+        # 1.3 右击任务栏第一格物品
+        game_helper.mouseMoveAndOnceClicked(cell_0_0_pos.x, cell_0_0_pos.y, button='right')
+        time.sleep(1)
+        ## 2. 寻路到怪物位置 -> 点击场景确认框 -> 等待人物到达怪物位置 -> 点击怪物
+        # 2.1 点击怪物位置
+        game_helper.mouseMoveAndOnceClicked(monster_pos.x, monster_pos.y)
+        # 2.2 点击场景确认框
+        game_helper.moveSceneConfirm()
+        # 2.3 等待人物到达怪物位置
+        if game_helper.isPersonStop(max_wait_time=240, threshold=15.0):
+            print("人物已到达怪物位置")
+        else:
+            print("等待超时，强制继续后续动作")
+        # 2.4 下坐骑
+        game_helper.getDownHorse()
+        # 2.5 召唤怪物 (点击背包栏 ->点击任务栏 -> 右击第一格)
+        game_helper.mouseMoveAndOnceClicked(package_pic_pos.x, package_pic_pos.y)
+        time.sleep(1)
+        game_helper.mouseMoveAndOnceClicked(ren_wu_lan_pos.x, ren_wu_lan_pos.y)
+        time.sleep(1)
+        game_helper.mouseMoveAndOnceClicked(cell_0_0_pos.x, cell_0_0_pos.y, button='right')
+        time.sleep(1)
+        # 2.6 点击怪物
+        monster_pos_2 = pyautogui.Point(x=1276, y=761)
+        for i in range(3):
+            game_helper.mouseMoveAndOnceClicked(monster_pos_2.x, monster_pos_2.y)
+            time.sleep(5)
+        # 2.7 点击定位符
+        game_helper.mouseMoveAndOnceClicked(ding_wei_fu_pos.x, ding_wei_fu_pos.y)
+        time.sleep(8)
     # 点击乘黄长老 -> 点击左侧任务 -> 点击完成
     game_helper.mouseMoveAndOnceClicked(cheng_huang_pos.x, cheng_huang_pos.y)
     time.sleep(1)
@@ -587,15 +697,19 @@ def autoDigSeed():
     time.sleep(2)
 
 if __name__ == '__main__':
-    autoFight(ImagePath.MingJiao.one, confidence=0.8, x="97", y="73")  
+    autoFight(ImagePath.MingJiao.one, confidence=0.8, x="78", y="148") 
     # test
     # game_helper = GameHelper()    
     # region = game_helper.getScreenRegion()
     # region_center = game_helper.getRegionCenter(region)
-    # print(region_center)
-    time.sleep(2)
-    autoDigSeed()  
-      
-                
+    # print(region_center)    
+    # 采集种子20次
+    # time.sleep(2)
+    # for i in range(1, 21):
+    #     print(f"开始第{i}次采集")
+    #     autoDigSeed(iter=i)
+    #     print(f"第{i}次采集完成")
+        
+                  
   
-    
+          
