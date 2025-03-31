@@ -1,9 +1,10 @@
 #include <fstream>
 #include <iostream>
+#include "logger.h"
 void test01() {
-  std::ofstream ofs("test.txt");
-  ofs << "test" << std::endl;
-  ofs.close();
+  logger::init();
+  logger::log_info("hello, world!");
+  logger::log_info("程序启动");
 }
 int main(int argc, char** argv) {
   test01();

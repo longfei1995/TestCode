@@ -1,15 +1,8 @@
 {
     "cmake.sourceDirectory": "${workspaceFolder}",
-    // "cmake.sourceDirectory": "${workspaceFolder}/test",
     "cmake.configureArgs": [
         "-DCMAKE_BUILD_TYPE=Debug"
     ],
-    "terminal.integrated.env.linux": {
-        "PATH": "${env:PATH}",
-        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}",
-        "XDG_SESSION_TYPE": "${env:XDG_SESSION_TYPE}",
-        "QT_QPA_PLATFORM": "xcb"
-    },
     "cSpell.words": [
         "Antialiasing",
         "Astar",
@@ -19,8 +12,18 @@
         "qobject",
         "spdlog"
     ],
-    "cmake.cmakePath": "C:/msys64/mingw64/bin/cmake.exe",
-    "cmake.generator": "MinGW Makefiles",
-    "clangd.path": "C:/msys64/mingw64/bin/clangd.exe",
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    // linux 专用
+    "http_proxy": "http://127.0.0.1:7897",
+    "https_proxy": "http://127.0.0.1:7897",
+    "terminal.integrated.env.linux": {
+        "PATH": "${env:PATH}",
+        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}",
+        "XDG_SESSION_TYPE": "${env:XDG_SESSION_TYPE}",
+        "QT_QPA_PLATFORM": "xcb",
+    }
+    // windows 专用
+    // "cmake.cmakePath": "C:/msys64/mingw64/bin/cmake.exe",
+    // "cmake.generator": "MinGW Makefiles",
+    // "clangd.path": "C:/msys64/mingw64/bin/clangd.exe"
 }
