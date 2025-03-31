@@ -103,83 +103,59 @@ class GameHelper:
         screen_y (int): 屏幕y坐标
     """
         # 移动鼠标到目标位置，使用高斯分布的随机时间
-        move_duration = max(0.1, random.gauss(0.2, 0.05))
+        move_duration = random.uniform(0.2, 0.5)
         pyautogui.moveTo(screen_x, screen_y, duration=move_duration)
         
         # 短暂停顿，模拟人类反应，使用高斯分布
-        time.sleep(max(0.01, random.gauss(0.07, 0.02)))
+        time.sleep(random.uniform(0.01, 0.05))
         
         # 按下鼠标左键
         pyautogui.mouseDown(button=button)
         
         # 随机按住时间，使用高斯分布
-        time.sleep(max(0.01, random.gauss(0.05, 0.03)))
+        time.sleep(random.uniform(0.01, 0.05))
         
         # 释放鼠标左键
         pyautogui.mouseUp(button=button)
         
         # 操作完成后的随机短暂停顿，使用高斯分布
-        time.sleep(max(0.05, random.gauss(0.15, 0.03)))
+        time.sleep(random.uniform(0.05, 0.15))
 
     def mouseMoveAndDoubleClicked(self, screen_x, screen_y):
         # 移动鼠标到目标位置
-        move_duration = max(0.1, random.gauss(0.2, 0.05))
+        move_duration = random.uniform(0.2, 0.5)
         pyautogui.moveTo(screen_x, screen_y, duration=move_duration)
         
         # 第一次点击
         pyautogui.mouseDown(button='left')
-        time.sleep(0.01)  # 极短按下时间
+        time.sleep(0.02)  # 极短按下时间
         pyautogui.mouseUp(button='left')
         
         # 控制两次点击间间隔时间（非常短）
-        time.sleep(max(0.01, random.gauss(0.05, 0.01)))  # 50ms左右的间隔
+        time.sleep(random.uniform(0.05, 0.06))  # 50ms左右的间隔
         
         # 第二次点击
         pyautogui.mouseDown(button='left')
-        time.sleep(0.01)  # 极短按下时间
+        time.sleep(0.02)  # 极短按下时间
         pyautogui.mouseUp(button='left')
         
         # 操作后随机延迟
-        time.sleep(max(0.05, random.gauss(0.15, 0.03)))
+        time.sleep(random.uniform(0.05, 0.15))
 
     def keyPress(self, key):
-        # 使用高斯分布的随机按键时间
-        # pyautogui.keyDown(key)
-        # time.sleep(max(0.01, random.gauss(0.1, 0.03)))
-        # pyautogui.keyUp(key)
-        # # 添加按键后的随机延迟
-        # time.sleep(max(0.01, random.gauss(0.05, 0.01)))
         pyautogui.press(key)
-        time.sleep(max(0.01, random.gauss(0.05, 0.01)))
+        time.sleep(random.uniform(0.05, 0.06))
 
     def typeNumber(self, number:str):
         """输入数字"""
         # 按数字前按三下删除
         for _ in range(3):
             pyautogui.press('backspace')
-            time.sleep(max(0.01, random.gauss(0.05, 0.01)))
+            time.sleep(random.uniform(0.05, 0.06))
         # 输入数字
         for char in number:
             pyautogui.typewrite(char)
-            time.sleep(max(0.01, random.gauss(0.05, 0.01)))
-    
-    def chatWithSomeone(self, message):
-        pyperclip.copy(message)
-        # 使用高斯分布的随机延迟替换固定延迟
-        time.sleep(max(0.05, random.gauss(0.1, 0.02)))  # 确保复制完成
-        
-        # 模拟组合键的随机延迟
-        pyautogui.keyDown('ctrl')
-        time.sleep(max(0.01, random.gauss(0.05, 0.01)))
-        pyautogui.keyDown('v')
-        time.sleep(max(0.01, random.gauss(0.05, 0.01)))
-        pyautogui.keyUp('v')
-        time.sleep(max(0.01, random.gauss(0.03, 0.01)))
-        pyautogui.keyUp('ctrl')
-        
-        # 确保粘贴完成后的随机延迟
-        time.sleep(max(0.05, random.gauss(0.1, 0.02)))
-        self.keyPress('enter')  # 使用自定义的keyPress函数
+            time.sleep(random.uniform(0.05, 0.06))
 
     def findPicInRegion(self, pic_name:str, region:tuple, confidence: float = 0.8, is_need_save_debug_image:bool = False):
         """在指定区域内查找图片并返回其Region
@@ -325,20 +301,19 @@ class GameHelper:
         self.mouseMoveAndOnceClicked(self.getRegionCenter(kRegionBBDrag).x, self.getRegionCenter(kRegionBBDrag).y)
         # self.save_region_debug_image(kRegionBBDrag)
         print("点击宝宝吃药")
-        time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+        time.sleep(random.uniform(0.1, 0.2))
         # 点击快乐球
         self.mouseMoveAndOnceClicked(self.getRegionCenter(kRegionBBHappyBall).x, self.getRegionCenter(kRegionBBHappyBall).y)
         # self.save_region_debug_image(kRegionBBHappyBall)
         print("点击宝宝吃快乐球")
-        time.sleep(max(0.1, random.gauss(0.2, 0.05)))
-
+        time.sleep(random.uniform(0.1, 0.2))
     def autoFightOnce(self, confidence:float = 0.7):
         """简化版自动战斗功能 - 基于固定位置的血条检测
         """
         # 先选取怪物，看是不是选中了
         self.keyPress(kKeyAutoSelect)
         print(f"选择怪物{kKeyAutoSelect}")
-        time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+        time.sleep(random.uniform(0.05, 0.06))
         has_select_target, _ = self.findPicInRegion(ImagePath.Other.monster_target, kRegionMonsterWindow, confidence=confidence, is_need_save_debug_image=False)
         if has_select_target:
             attack_once = True
@@ -374,7 +349,7 @@ class GameHelper:
         """场景内自动寻路"""
         # 打开自动寻路
         self.keyPress("`")  # 打开自动寻路~
-        time.sleep(max(1, random.gauss(2, 0.05)))
+        time.sleep(random.uniform(1, 1.5))
         has_find_pic, pic_region = self.findPicInRegion(ImagePath.Other.auto_find_1, kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
         if has_find_pic and pic_region is not None:
             print(f"自动寻路到坐标{x}, {y}")
@@ -383,13 +358,13 @@ class GameHelper:
             x3 = pic_region.left + pic_region.width * (7/8)
             y1 = pic_region.top + pic_region.height * (1/2)
             self.mouseMoveAndOnceClicked(x1, y1)
-            time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+            time.sleep(random.uniform(0.1, 0.2))
             self.typeNumber(x)
             self.mouseMoveAndOnceClicked(x2, y1)
-            time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+            time.sleep(random.uniform(0.1, 0.2))
             self.typeNumber(y)
             self.mouseMoveAndOnceClicked(x3, y1)
-            time.sleep(max(0.1, random.gauss(0.2, 0.05)))
+            time.sleep(random.uniform(0.1, 0.2))
             # 关闭自动寻路
             if is_press_esc:
                 self.keyPress("ESC")
@@ -579,7 +554,7 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
             print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 不在场景中{scene_name}")
         # 休息间隔
         print(f"当前循环次数: {iter}次")
-        time.sleep(max(0.1, random.gauss(0.2, 0.1)))
+        time.sleep(0.2)
 
 def autoDigSeed(iter:int = 1):
     # 如果iter为奇数，则采集红果，否则采集种子

@@ -6,7 +6,7 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-namespace logger {
+namespace logger { 
 
 // 初始化日志系统
 inline void init(const std::string& logger_name = "main_logger") {
