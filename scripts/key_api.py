@@ -29,7 +29,8 @@ kRegionAutoFind = (2357, 229, 196, 322)         # 自动寻路区域
 kRegionYiZhanLeftDiag = (1, 178, 282, 393)      # 驿站左侧框位置
 kRegionEnter = (984, 460, 554, 404)             # 是否进入不加杀气场景  
 kRegionPackage = (1887, 645, 649, 702)          # 背包栏位置
-kRegionChengHuang = (0, 133, 409, 574)      # 乘黄对话框
+kRegionChengHuang = (0, 133, 409, 574)          # 乘黄对话框
+kScreenCenterPoint = pyautogui.Point(x=pyautogui.size().width//2, y=pyautogui.size().height//2)               # 中心位置
 # 背包中，各个项目相对于背包栏图标的像素：
 @dataclass
 class Bias:
@@ -79,6 +80,7 @@ class ImagePath:
         three: str = "da_li\\3.png"     # todo, 暂无  
         four: str = "da_li\\4.png"      # 带我去其他门派
         five: str = "da_li\\5.png"      # 门派-明教
+        six: str = "da_li\\6.png"       # 门派-峨眉
     class MingJiao:
         one: str = "ming_jiao\\1.png"   # 右上角"明教"图片
         two: str = "ming_jiao\\2.png"   # 石刚-打怪
@@ -94,7 +96,13 @@ class GameHelper:
     def __init__(self):
         """初始化GameHelper类"""
         self.current_file_path_ = os.path.dirname(os.path.abspath(__file__))
-                
+    
+    def mouseMoveToCenter(self):
+        """移动鼠标到目标位置"""
+        move_duration = random.uniform(0.2, 0.5)
+        pyautogui.moveTo(kScreenCenterPoint.x, kScreenCenterPoint.y, duration=move_duration)
+        time.sleep(random.uniform(0.01, 0.05))
+    
     def mouseMoveAndOnceClicked(self, screen_x, screen_y, button:str = 'left'):
         """模拟人类真实点击操作，在按下和抬起之间添加随机延迟
     
@@ -113,7 +121,7 @@ class GameHelper:
         pyautogui.mouseDown(button=button)
         
         # 随机按住时间，使用高斯分布
-        time.sleep(random.uniform(0.01, 0.05))
+        time.sleep(random.uniform(0.05, 0.08))
         
         # 释放鼠标左键
         pyautogui.mouseUp(button=button)
@@ -370,6 +378,8 @@ class GameHelper:
                 self.keyPress("ESC")
         else:
             print("未找到自动寻路区域")
+        time.sleep(2)
+        self.mouseMoveToCenter()
             
     def moveSceneConfirm(self):
         """移动场景确认"""
@@ -382,61 +392,75 @@ class GameHelper:
             print("未找到确认进入不加杀气场景")
         
         
-    def fromDaliToSomeWhere(self, scene_name:str, x:str, y:str):
-        """从大理到某个地方"""
-        print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 在大理")
-        # 打开自动寻路
-        self.keyPress("`")  # 打开自动寻路~
+    def fromDaliToMenPai(self, scene_name:str, x:str, y:str):
+        """从大理到某个门派"""
+        cui_feng_jiu_pos = pyautogui.Point(x=1297, y=698)
+        xia_la_kuang_pos = pyautogui.Point(x=246, y=504)
+        fight_pos = pyautogui.Point(71, 313)
+        ## 1. 上坐骑 && 自动寻路中崔逢九 && 点击去其他门派
+        self.rideHorse()
+        self.autoFind("241", "137")
+        time.sleep(5)
+        self.mouseMoveAndOnceClicked(cui_feng_jiu_pos.x, cui_feng_jiu_pos.y)
         time.sleep(1)
-        # 自动寻路中点击崔逢九 && 双击
-        _, pic_region = self.findPicInRegion(ImagePath.DaLi.two, kRegionAutoFind, confidence=0.8, is_need_save_debug_image=True)
-        pic_center_position = self.getRegionCenter(pic_region)
-        self.mouseMoveAndDoubleClicked(pic_center_position.x, pic_center_position.y)
-        time.sleep(3)
-        print("点击崔逢九完成")
-        # 点击下拉框
-        _, down_pic_ming_jiao = self.findPicInRegion(ImagePath.Other.auto_find_2, kRegionYiZhanLeftDiag, confidence=0.6, is_need_save_debug_image=True)
-        down_pic_center_position = self.getRegionCenter(down_pic_ming_jiao)
-        self.mouseMoveAndOnceClicked(down_pic_center_position.x, down_pic_center_position.y)
-        print("点击下拉框完成")
+        # 1.1 点击下拉框
+        self.mouseMoveAndOnceClicked(xia_la_kuang_pos.x, xia_la_kuang_pos.y)
         time.sleep(1)
+        # 1.2 点击其他门派
+        _, qi_ta_men_pai = self.findPicInRegion(ImagePath.DaLi.four, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
+        qi_ta_men_pai_pos = self.getRegionCenter(qi_ta_men_pai)
+        self.mouseMoveAndOnceClicked(qi_ta_men_pai_pos.x, qi_ta_men_pai_pos.y)
+        time.sleep(1)
+        ## 2. 移动到门派打怪人 && 点击门派打怪人
         if scene_name == ImagePath.MingJiao.one:
-            # 点击其他门派
-            _, qi_ta_men_pai = self.findPicInRegion(ImagePath.DaLi.four, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
-            qi_ta_men_pai_pos = self.getRegionCenter(qi_ta_men_pai)
-            self.mouseMoveAndOnceClicked(qi_ta_men_pai_pos.x, qi_ta_men_pai_pos.y)
-            print("点击带我去其他门派完成")
-            # 点击明教
-            _, ming_jiao = self.findPicInRegion(ImagePath.DaLi.five, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
-            ming_jiao_pos = self.getRegionCenter(ming_jiao)
-            self.mouseMoveAndOnceClicked(ming_jiao_pos.x, ming_jiao_pos.y)
-            print("点击门派-明教完成")
-            time.sleep(2)   # 2s从大理到明教
-            # 点击明教打怪的人 - 石刚
-            shi_gang = pyautogui.Point(1148, 513)
-            self.mouseMoveAndOnceClicked(shi_gang.x, shi_gang.y)
-            print("点击石刚完成")
-            time.sleep(3)   # 移动到石刚的时间
-            # 点击抵抗围剿
-            di_kang_wei_jiu = pyautogui.Point(71, 313)
-            self.mouseMoveAndOnceClicked(di_kang_wei_jiu.x, di_kang_wei_jiu.y)
-            print("点击抵抗围剿完成")
-            # 点击确认进入不加杀气场景
-            self.moveSceneConfirm()
-            time.sleep(2) # 过场景
-            # 去到坐标
-            self.autoFind(x, y)
-            if self.isPersonStop(max_wait_time=180, threshold=15.0):
+            shi_gang_pos = pyautogui.Point(x=1276, y=677)
+            # 点击门派-明教
+            _, region = self.findPicInRegion(ImagePath.DaLi.five, kRegionYiZhanLeftDiag, confidence=0.8, is_need_save_debug_image=True)
+            region_pos = self.getRegionCenter(region)
+            self.mouseMoveAndOnceClicked(region_pos.x, region_pos.y)
+            time.sleep(5)
+            # 移动到门派打怪人 && 点击门派打怪人
+            self.autoFind("95", "161")
+            if self.isPersonStop(max_wait_time=10):
                 print("人物已到达目标位置")
             else:
                 print("等待超时，强制继续后续动作")
-    
+            self.mouseMoveAndOnceClicked(shi_gang_pos.x, shi_gang_pos.y)
+            time.sleep(2)
+        elif scene_name == ImagePath.EMei.one:
+            liu_san_mei_pos = pyautogui.Point(x=1293, y=677)
+            # 点击门派-峨眉
+            _, region = self.findPicInRegion(ImagePath.DaLi.six, kRegionYiZhanLeftDiag, confidence=0.8)
+            region_pos = self.getRegionCenter(region)
+            self.mouseMoveAndOnceClicked(region_pos.x, region_pos.y)
+            time.sleep(5)
+            # 移动到门派打怪人 && 点击门派打怪人
+            self.autoFind("94", "147")
+            if self.isPersonStop(max_wait_time=30):
+                print("人物已到达目标位置")
+            else:
+                print("等待超时，强制继续后续动作")
+            self.mouseMoveAndOnceClicked(liu_san_mei_pos.x, liu_san_mei_pos.y)
+            time.sleep(2)
+        ## 3. 点击去打怪场景 && 自动寻路 && 下坐骑
+        self.mouseMoveAndOnceClicked(fight_pos.x, fight_pos.y)
+        time.sleep(5)
+        # 点击确认进入不加杀气场景
+        self.moveSceneConfirm()
+        time.sleep(2)
+        self.autoFind(x, y)
+        if self.isPersonStop(max_wait_time=60):
+            print("人物已到达目标位置")
+        else:
+            print("等待超时，强制继续后续动作")
+        self.getDownHorse()
     def rideHorse(self):
         """上坐骑"""
         # 点击坐骑
         screen_pos = pyautogui.Point(x=2534, y=478)
         self.mouseMoveAndOnceClicked(screen_pos.x, screen_pos.y)
         time.sleep(5)
+        self.mouseMoveToCenter()
     
     def getDownHorse(self):
         """下坐骑"""
@@ -444,8 +468,9 @@ class GameHelper:
         screen_pos = pyautogui.Point(x=2534, y=478)
         self.mouseMoveAndOnceClicked(screen_pos.x, screen_pos.y)
         time.sleep(1)
+        self.mouseMoveToCenter()
 
-    def isPersonStop(self, max_wait_time=180, threshold=15.0):
+    def isPersonStop(self, max_wait_time=180, threshold=5.0):
         """持续监测直到人物停止移动，使用更简单的像素差异比较方法
         
         Args:
@@ -454,7 +479,7 @@ class GameHelper:
         Returns:
             bool: 是否成功检测到人物静止
         """
-        region = (1217, 542, 118, 90)  # 人物周围区域
+        region = (1218, 445, 109, 88)  # 人物周围区域
         start_time = time.time()
         
         print(f"开始持续监测人物状态，最长等待{max_wait_time}秒...")
@@ -523,21 +548,24 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
     iter:int = -1    # 监控循环次数
     while True:    
         iter += 1
-        # 每500次循环检查是否在地府
+        # 检查是否在地府
         if iter % 500 == 0:
             is_escape_di_fu = game_helper.isInDiFuAndEscape()
             # 检查是否在大理
             is_in_dali = game_helper.isInScene(ImagePath.DaLi.one, confidence=0.8)
             if is_in_dali:
+                iter += 1
                 if (scene_name == ImagePath.MingJiao.one):
-                    game_helper.fromDaliToSomeWhere(ImagePath.MingJiao.one, x, y)
+                    game_helper.fromDaliToMenPai(ImagePath.MingJiao.one, x, y)
+                elif (scene_name == ImagePath.EMei.one):
+                    game_helper.fromDaliToMenPai(ImagePath.EMei.one, x, y)
         # 每2000次循环: 吃药，回到地点并重置iter
         if iter % 2000 == 0:
             iter = 0
-            game_helper.babyEat()
+            # game_helper.babyEat()
             game_helper.autoFind(x, y)
-            if game_helper.isPersonStop(max_wait_time=180, threshold=15.0):
-                print("人物已到达目标位置")
+            if game_helper.isPersonStop(max_wait_time=60):
+                print("人物已到达目标位置") 
             else:
                 print("等待超时，强制继续后续动作")
         # 检查是否在场景中
@@ -556,7 +584,7 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
         print(f"当前循环次数: {iter}次")
         time.sleep(0.2)
 
-def autoDigSeed(iter:int = 1):
+def autoDigSeed(iter:int = 1, seed_level:int = 1):
     # 如果iter为奇数，则采集红果，否则采集种子
     is_dig_red = True
     if iter % 2 == 1:
@@ -567,14 +595,21 @@ def autoDigSeed(iter:int = 1):
         is_dig_red = False
     game_helper = GameHelper()
     # 乘黄长老坐标
-    cheng_huang_pos = pyautogui.Point(x=1229, y=719)
+    cheng_huang_pos = pyautogui.Point(x=1160, y=707)
     kun_wu_sheng_wang_ren_wu_pos = pyautogui.Point(x=129, y=463)
-    kun_wu_sheng_wang_ren_wu_pos2 = pyautogui.Point(x=116, y=279)
+    kun_wu_sheng_wang_ren_wu_pos2 = None
+    auto_find_seed_pos: tuple[str, str] = ("57", "204")
+    if seed_level == 1:
+        kun_wu_sheng_wang_ren_wu_pos2 = pyautogui.Point(x=116, y=279)
+        auto_find_seed_pos = ("57", "204")
+    elif seed_level == 2:
+        kun_wu_sheng_wang_ren_wu_pos2 = pyautogui.Point(x=111, y=304)
+        auto_find_seed_pos = ("152", "238")
     accept_button_pos = pyautogui.Point(x=27, y=535)
     complete_button_pos = pyautogui.Point(x=65, y=535) 
-    # 红果坐标
-    hong_guo_pos = pyautogui.Point(x=1282, y=703)
-    pet_pos = pyautogui.Point(x=2385, y=409)
+    # 果实坐标
+    guo_shi_pos = pyautogui.Point(x=1282, y=703)
+    pet_pos = pyautogui.Point(x=2400, y=411)
     ding_wei_fu_pos = pyautogui.Point(x=1260, y=1358) # 放在D旁边
     # 打怪相关坐标
     package_pic_pos = pyautogui.Point(x=1517, y=1377)
@@ -591,21 +626,25 @@ def autoDigSeed(iter:int = 1):
     time.sleep(3)
     if is_dig_red:
         print("开始采集红果")
-        ## 1. 寻路到红果位置(57, 204) -> 下坐骑  
-        game_helper.autoFind(x="57", y="204")
-        time.sleep(random.uniform(22, 25))      # 到红果的时间
+        ## 1. 寻路到果实位置(57, 204) -> 下坐骑  
+        game_helper.autoFind(x=auto_find_seed_pos[0], y=auto_find_seed_pos[1])
+        # 判断人物静止
+        if game_helper.isPersonStop(max_wait_time=60):
+            print("人物已到达目标位置")
+        else:
+            print("等待超时，强制继续后续动作")
         game_helper.getDownHorse()
         ## 2. 点击红果3次 -> 上坐骑 -> 选择任务框的第二个坐标
         # 2.1 点击红果3次
         for i in range(3):
-            game_helper.mouseMoveAndOnceClicked(hong_guo_pos.x, hong_guo_pos.y)
+            game_helper.mouseMoveAndOnceClicked(guo_shi_pos.x, guo_shi_pos.y)
             time.sleep(5)
         # 2.2 上坐骑
         game_helper.rideHorse()
         # 2.3 选择任务框的第二个坐标
         game_helper.mouseMoveAndOnceClicked(pet_pos.x, pet_pos.y)
         print("开始等待人物移动到目标位置...")
-        if game_helper.isPersonStop():
+        if game_helper.isPersonStop(max_wait_time=60):
             print("人物已到达目标位置")
         else:
             print("等待超时，强制继续后续动作")
@@ -642,7 +681,7 @@ def autoDigSeed(iter:int = 1):
         # 2.2 点击场景确认框
         game_helper.moveSceneConfirm()
         # 2.3 等待人物到达怪物位置
-        if game_helper.isPersonStop(max_wait_time=240, threshold=15.0):
+        if game_helper.isPersonStop(max_wait_time=120):
             print("人物已到达怪物位置")
         else:
             print("等待超时，强制继续后续动作")
@@ -656,10 +695,14 @@ def autoDigSeed(iter:int = 1):
         game_helper.mouseMoveAndOnceClicked(cell_0_0_pos.x, cell_0_0_pos.y, button='right')
         time.sleep(1)
         # 2.6 点击怪物
-        monster_pos_2 = pyautogui.Point(x=1276, y=761)
-        for i in range(3):
-            game_helper.mouseMoveAndOnceClicked(monster_pos_2.x, monster_pos_2.y)
-            time.sleep(5)
+        # monster_pos_2 = pyautogui.Point(x=1276, y=761)
+        # for i in range(3):
+        #     game_helper.mouseMoveAndOnceClicked(monster_pos_2.x, monster_pos_2.y)
+        #     time.sleep(5)
+        game_helper.keyPress('l')
+        time.sleep(10)
+        game_helper.keyPress('l')
+        time.sleep(3)
         # 2.7 点击定位符
         game_helper.mouseMoveAndOnceClicked(ding_wei_fu_pos.x, ding_wei_fu_pos.y)
         time.sleep(8)
@@ -672,17 +715,20 @@ def autoDigSeed(iter:int = 1):
     time.sleep(2)
 
 if __name__ == '__main__':
-    autoFight(ImagePath.MingJiao.one, confidence=0.8, x="78", y="148") 
+    # autoFight(ImagePath.MingJiao.one, confidence=0.8, x="97", y="76") 
+    autoFight(ImagePath.EMei.one, confidence=0.7, x="54", y="144") 
     # test
     # game_helper = GameHelper()    
     # region = game_helper.getScreenRegion()
     # region_center = game_helper.getRegionCenter(region)
     # print(region_center)    
     # 采集种子20次
-    # time.sleep(2)
-    # for i in range(1, 21):
+    # for i in range(5):
+    #     time.sleep(1)    
+    #     print(f"剩余{5 - i}秒执行脚本....")
+    # for i in range(10, 11):
     #     print(f"开始第{i}次采集")
-    #     autoDigSeed(iter=i)
+    #     autoDigSeed(iter=i, seed_level=2)  
     #     print(f"第{i}次采集完成")
         
                   
