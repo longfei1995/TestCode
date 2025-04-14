@@ -480,14 +480,23 @@ class GameHelper:
         print(f"等待超时({max_wait_time}秒)，人物仍未静止")
         return False
 
-def autoFight(scene_name:str, confidence, x:str, y:str):
+def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
     game_helper = GameHelper()
     # 执行前等待
     for i in range(5):
         time.sleep(1)
         print(f"剩余{5 - i}秒执行脚本....")
+        # 检查停止标志
+        if gui and gui.stop_flag:
+            print("收到停止信号，取消执行")
+            return
     iter:int = -1    # 监控循环次数
     while True:    
+        # 检查停止标志
+        if gui and gui.stop_flag:
+            print("收到停止信号，结束任务")
+            return
+            
         iter += 1
         # 检查是否在地府
         if iter % 500 == 0:
@@ -524,12 +533,21 @@ def autoFight(scene_name:str, confidence, x:str, y:str):
         print(f"当前循环次数: {iter}次")
         time.sleep(0.2)
 
-def autoFightOther(scene_name:str):
+def autoFightOther(scene_name:str, gui=None):
     game_helper = GameHelper()
     for i in range(5):
         time.sleep(1)
         print(f"剩余{5 - i}秒执行脚本....")
+        # 检查停止标志
+        if gui and gui.stop_flag:
+            print("收到停止信号，取消执行")
+            return
     while True:
+        # 检查停止标志
+        if gui and gui.stop_flag:
+            print("收到停止信号，结束任务")
+            return
+            
         is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionScreenOneQuarter, confidence=0.8)
         if is_in_scene:
             print(f"当前在场景中{scene_name},时间 = {time.strftime('%Y-%m-%d %H:%M:%S')}, 正在打怪")
@@ -541,7 +559,11 @@ def autoFightOther(scene_name:str):
             print(f"当前不在场景中{scene_name},时间 = {time.strftime('%Y-%m-%d %H:%M:%S')}")
             time.sleep(1)
 
-def autoDigSeed(iter:int = 1, seed_level:int = 1):
+def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
+    # 检查停止标志
+    if gui and gui.stop_flag:
+        print("收到停止信号，取消执行")
+        return
     # 如果iter为奇数，则采集果实，否则打怪
     is_dig_red = True
     if iter % 2 == 1:

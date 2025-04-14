@@ -8,7 +8,9 @@ temp/
 .cache/
 .idea/
 debug/
+log/
 
 # file
 *.pdf
 *.csv
+scripts/__pycache__/key_api.cpython-39.pyc
