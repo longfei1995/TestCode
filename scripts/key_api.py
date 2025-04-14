@@ -30,10 +30,12 @@ kRegionScreenThreeQuarter = (0, kScreenHeight//2, kScreenWidth//2, kScreenHeight
 kRegionScreenFourQuarter = (kScreenWidth//2, kScreenHeight//2, kScreenWidth//2, kScreenHeight//2)   # 第四象限屏幕
 kPointScreenCenter = pyautogui.Point(x=kScreenWidth//2, y=kScreenHeight//2)               # 中心位置
 
-# 全局坐标
+# 按键
+# todo, 把按键加上
 kPointDingWeiFu = pyautogui.Point(x=1403, y=1359)   # 定位符 (F9)
 kPointHorse = pyautogui.Point(x=1439, y=1359)       # 坐骑图标（F10)
-
+kKeyAutoSelect = 'q'
+kKeyAutoAttack = 'e'
 # 背包中，各个项目相对于背包栏图标的像素：
 @dataclass
 class Bias:
@@ -41,10 +43,6 @@ class Bias:
     cai_liao: pyautogui.Point = pyautogui.Point(x=55, y=29)
     ren_wu: pyautogui.Point = pyautogui.Point(x=98, y=29)
     cell_0_0: pyautogui.Point = pyautogui.Point(x=6, y=60)
-
-# 按键
-kKeyAutoAttack = 'e'
-kKeyAutoSelect = 'q'
 # 图片列表
 @dataclass
 class ImagePath:
@@ -699,6 +697,9 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     game_helper.keyPress('esc')
     time.sleep(1)
 
+def init(init_list:list[str]):
+    global kKeyAutoSelect
+    global kKeyAutoAttack
 if __name__ == '__main__':
     # 门派挂机
     # autoFight(ImagePath.MingJiao.one, confidence=0.8, x="77", y="147") 
