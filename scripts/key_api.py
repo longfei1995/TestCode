@@ -31,11 +31,10 @@ kRegionScreenFourQuarter = (kScreenWidth//2, kScreenHeight//2, kScreenWidth//2, 
 kPointScreenCenter = pyautogui.Point(x=kScreenWidth//2, y=kScreenHeight//2)               # 中心位置
 
 # 按键
-# todo, 把按键加上
-kPointDingWeiFu = pyautogui.Point(x=1403, y=1359)   # 定位符 (F9)
-kPointHorse = pyautogui.Point(x=1439, y=1359)       # 坐骑图标（F10)
 kKeyAutoSelect = 'q'
 kKeyAutoAttack = 'e'
+kKeyDingWeiFu = 'f9'
+kKeyHorse = 'f10'
 # 背包中，各个项目相对于背包栏图标的像素：
 @dataclass
 class Bias:
@@ -56,6 +55,7 @@ class ImagePath:
         di_fu_2 = "other\\di_fu_2.png"                      # 地府光圈
         enter = "other\\que_ding.png"                       # 确认进入不加杀气场景
         bao_guo: str = "other\\bao_guo.png"                 # 背包栏图标
+        ti_jiao_ling_yao: str = "other\\ti_jiao_ling_yao.png" # 提交灵药
     class DaLi:
         one: str = "da_li\\1.png"       # 右上角"大理"图片
         two: str = "da_li\\2.png"       # 崔逢九传送
@@ -399,13 +399,13 @@ class GameHelper:
     
     def rideHorse(self):
         """上坐骑"""
-        self.mouseMoveAndOnceClicked(kPointHorse.x, kPointHorse.y)
+        self.keyPress(kKeyHorse)
         time.sleep(5)
         self.mouseMoveToCenter()
     
     def getDownHorse(self):
         """下坐骑"""
-        self.mouseMoveAndOnceClicked(kPointHorse.x, kPointHorse.y)
+        self.keyPress(kKeyHorse)
         time.sleep(1)
         self.mouseMoveToCenter()
 
@@ -421,7 +421,7 @@ class GameHelper:
         region = (1218, 445, 109, 88)  # 人物周围区域
         start_time = time.time()
         
-        print(f"开始持续监测人物状态，最长等待{max_wait_time}秒...")
+        print(f"开始持续监测人物是否静止，最长等待{max_wait_time}秒...")
         
         while time.time() - start_time < max_wait_time:
             images = []
@@ -447,9 +447,8 @@ class GameHelper:
                     for old_file in movement_files[:-2]:
                         try:
                             os.remove(old_file)
-                            print(f"删除旧的监测图片: {os.path.basename(old_file)}")
                         except Exception as e:
-                            print(f"删除文件时出错: {e}")
+                            print(f"删除检测图片时出错: {e}")
                 
                 debug_path = os.path.join(debug_dir, f"movement_{current_time}_{i}.png")
                 screenshot.save(debug_path)
@@ -466,7 +465,7 @@ class GameHelper:
             elapsed_time = time.time() - start_time
             
             # 差异小于阈值视为静止
-            print(f"已等待{elapsed_time:.1f}秒，图片平均差异: {avg_diff:.2f}，阈值: {threshold}")
+            print(f"已等待{elapsed_time:.1f}秒，平均差异: {avg_diff:.2f}，阈值: {threshold}")
             
             if avg_diff < threshold:
                 print(f"检测到人物已静止！总用时: {elapsed_time:.1f}秒")
@@ -502,10 +501,13 @@ def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
             # 检查是否在大理
             is_in_dali = game_helper.isInScene(ImagePath.DaLi.one, confidence=0.8)
             if is_in_dali:
+                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 在大理")
                 iter += 1
                 if (scene_name == ImagePath.MingJiao.one):
+                    print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 从大理去明教")
                     game_helper.fromDaliToMenPai(ImagePath.MingJiao.one, x, y)
                 elif (scene_name == ImagePath.EMei.one):
+                    print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 从大理去峨眉")
                     game_helper.fromDaliToMenPai(ImagePath.EMei.one, x, y)
         # 每2000次循环: 吃药，回到地点并重置iter
         if iter % 2000 == 0:
@@ -578,7 +580,6 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     kPointMonsterLocation = pyautogui.Point(x=149, y=259)
     kPointPackage = pyautogui.Point(x=1517, y=1377)
     kPointLevel = pyautogui.Point(x=116, y=279)
-    kPointTiJiaoLingYao = pyautogui.Point(x=78, y=314) 
     auto_find_seed_pos: tuple[str, str] = ("57", "204")
     if seed_level == 1:
         kPointLevel = pyautogui.Point(x=116, y=279)
@@ -635,10 +636,12 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
         # 3.1 下坐骑
         game_helper.getDownHorse()
         # 3.2 点击提交灵药
-        game_helper.mouseMoveAndOnceClicked(kPointTiJiaoLingYao.x, kPointTiJiaoLingYao.y)
+        _, region = game_helper.findPicInRegion(ImagePath.Other.ti_jiao_ling_yao, kRegionScreenLeft, confidence=0.8)      
+        region_pos = game_helper.getRegionCenter(region)
+        game_helper.mouseMoveAndOnceClicked(region_pos.x, region_pos.y)
         time.sleep(1)
         # 3.3 点击定位符
-        game_helper.mouseMoveAndOnceClicked(kPointDingWeiFu.x, kPointDingWeiFu.y)
+        game_helper.keyPress(kKeyDingWeiFu)
         time.sleep(8)
     else:
         print("开始打怪物")
@@ -681,7 +684,7 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
         game_helper.keyPress('l')
         time.sleep(3)
         # 2.7 点击定位符
-        game_helper.mouseMoveAndOnceClicked(kPointDingWeiFu.x, kPointDingWeiFu.y)
+        game_helper.keyPress(kKeyDingWeiFu)
         time.sleep(8)
     # 点击乘黄长老 -> 点击左侧任务 -> 点击完成
     # 1.2 双击乘黄长老
@@ -697,9 +700,20 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     game_helper.keyPress('esc')
     time.sleep(1)
 
-def init(init_list:list[str]):
+def initKey(init_list:list[str]):
     global kKeyAutoSelect
     global kKeyAutoAttack
+    global kKeyDingWeiFu
+    global kKeyHorse
+    if len(init_list) == 4:
+        kKeyAutoSelect = init_list[0]
+        kKeyAutoAttack = init_list[1]
+        kKeyDingWeiFu = init_list[2]
+        kKeyHorse = init_list[3]
+        print(f"按键设置成功: 自动选择目标按键{kKeyAutoSelect}, 自动攻击按键{kKeyAutoAttack}, 定位符按键{kKeyDingWeiFu}, 骑马按键{kKeyHorse}")
+    else:
+        raise ValueError("init_list 长度必须为4")
+    
 if __name__ == '__main__':
     # 门派挂机
     # autoFight(ImagePath.MingJiao.one, confidence=0.8, x="77", y="147") 

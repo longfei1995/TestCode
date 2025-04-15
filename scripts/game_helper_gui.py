@@ -7,9 +7,10 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget,
                             QLineEdit, QPushButton, QFormLayout, QGroupBox, 
                             QMessageBox, QSpinBox, QTextEdit, QSplitter, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QColor, QTextCursor
+from PyQt5.QtGui import QColor, QTextCursor, QIcon
 import key_api  # 导入原始脚本
 kButtonWidth = 100 # 按钮宽度
+
 class LogStream(QObject):
     """用于重定向print输出到QTextEdit的类"""
     log_message = pyqtSignal(str)
@@ -18,22 +19,27 @@ class LogStream(QObject):
         super().__init__()
         self.text_widget = text_widget
         self.max_lines = max_lines
-        self.log_message.connect(self.text_widget.append)
+        # 确保信号连接到正确的槽函数，这样多线程就安全了
+        self.log_message.connect(self.update_text)
     
     def write(self, text):
         if text and not text.isspace():
             current_time = time.strftime("%H:%M:%S", time.localtime())
+            # 通过信号发送消息，而不是直接操作UI
             self.log_message.emit(f"[{current_time}] {text}")
-            
-            # 检查日志行数并限制
-            doc = self.text_widget.document()
-            if doc.blockCount() > self.max_lines:
-                cursor = QTextCursor(doc)
-                cursor.movePosition(QTextCursor.Start)
-                cursor.movePosition(QTextCursor.Down, QTextCursor.KeepAnchor, 0)
-                cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
-                cursor.removeSelectedText()
-                cursor.deleteChar()  # 删除换行符
+    
+    def update_text(self, text):
+        # 在主线程中安全更新UI
+        self.text_widget.append(text)
+        # 检查日志行数并限制
+        doc = self.text_widget.document()
+        if doc.blockCount() > self.max_lines:
+            cursor = QTextCursor(doc)
+            cursor.movePosition(QTextCursor.Start)
+            cursor.movePosition(QTextCursor.Down, QTextCursor.KeepAnchor, 0)
+            cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
+            cursor.deleteChar()  # 删除换行符
     
     def flush(self):
         pass
@@ -48,8 +54,17 @@ class GameHelperGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # 设置窗口标题 && 大小
-        self.setWindowTitle("GameHelper By: 豆子")
+        self.setWindowTitle("GameHelper Design By: 豆子 Test By: 苏苏 Version:25/04/14")
         self.setGeometry(100, 100, 500, 600)  # 调整窗口更大一些
+        
+        # 设置应用图标
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(script_dir, 'pics\\other', "icon.png")
+        # 检查图标文件是否存在，如果存在则设置
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        else:
+            print(f"图标文件不存在: {icon_path}")
         
         # 创建主布局
         self.main_widget_ = QWidget()
@@ -90,18 +105,21 @@ class GameHelperGUI(QMainWindow):
         self.tabs_layout_.addWidget(self.tabs_)
         
         # 2. 创建三个选项卡
+        self.tab_init_ = QWidget()
         self.tab_men_pai_ = QWidget()
         self.tab_fan_zei_ = QWidget()
         self.tab_dig_seed_ = QWidget()
+        self.tabs_.addTab(self.tab_init_, "设置按键")
         self.tabs_.addTab(self.tab_men_pai_, "门派挂机")
         self.tabs_.addTab(self.tab_fan_zei_, "刷反贼/光头")
         self.tabs_.addTab(self.tab_dig_seed_, "采集种子")
         
         # 初始化各选项卡的布局
+        self.setInitTab()
         self.setMenPaiTab()
         self.setFanZeiTab()
         self.setDigSeedTab()
-        
+
     def setLog(self):
         """设置日志区域"""
         # 创建日志区域
@@ -141,6 +159,47 @@ class GameHelperGUI(QMainWindow):
         
         # 2.4 将网格布局添加到主布局
         self.log_layout.addLayout(log_btn_grid)
+    
+    def setInitTab(self):
+        """设置初始化选项卡"""
+        layout = QVBoxLayout()
+        # 1. 创建按键选择布局
+        key_select_layout = QFormLayout()
+        
+        # 2. 设置label
+        select_label = QLabel("选择怪物按键:")
+        attack_label = QLabel("攻击按键:")
+        position_label = QLabel("定位符按键:")
+        horse_label = QLabel("骑马按键:")
+        
+        # 3. 设置输入框
+        select_input = QLineEdit("q")
+        attack_input = QLineEdit("e")
+        position_input = QLineEdit("f9")
+        horse_input = QLineEdit("f10")      
+        
+        # 4. 添加到布局
+        key_select_layout.addRow(select_label, select_input)
+        key_select_layout.addRow(attack_label, attack_input)
+        key_select_layout.addRow(position_label, position_input)
+        key_select_layout.addRow(horse_label, horse_input)
+        
+        # 5. 添加设置按钮
+        set_btn = QPushButton("设置")
+        set_btn.setFixedWidth(kButtonWidth)
+        set_btn.clicked.connect(lambda: self.setKey(
+            select_input.text(),
+            attack_input.text(),
+            position_input.text(),
+            horse_input.text()
+        ))
+        
+        # 6. 添加到布局
+        layout.addLayout(key_select_layout)
+        layout.addWidget(set_btn)
+        
+        self.tab_init_.setLayout(layout)
+        
     
     def setMenPaiTab(self):
         """设置门派挂机选项卡"""
@@ -252,18 +311,13 @@ class GameHelperGUI(QMainWindow):
         seed_level_combo = QComboBox()
         seed_level_combo.addItems(["1", "2"])
         form_layout.addRow("采集种子等级:", seed_level_combo)
-        seed_level = 1 
-        if seed_level_combo.currentText() == "1":
-            seed_level = 1
-        elif seed_level_combo.currentText() == "2":
-            seed_level = 2
             
         # 添加启动按钮
         start_btn = QPushButton("开始采集")
         start_btn.setFixedWidth(kButtonWidth)
         start_btn.clicked.connect(lambda: self.startDigSeed(
             iter_spin.value(),
-            seed_level
+            int(seed_level_combo.currentText())
         ))
         
         # 添加停止按钮
@@ -381,7 +435,7 @@ class GameHelperGUI(QMainWindow):
         except Exception as e:
             print(f"错误: 启动刷怪任务失败: {str(e)}")
     
-    def startDigSeed(self, iter_val, seed_level):
+    def startDigSeed(self, iter_val:int, seed_level:int):
         """开始采集种子任务"""
         try:
             # 重置停止标志
@@ -406,6 +460,12 @@ class GameHelperGUI(QMainWindow):
             self.current_thread.start()
         except Exception as e:
             print(f"错误: 启动采集种子任务失败: {str(e)}")
+    
+    def setKey(self, select_key:str, attack_key:str, position_key:str, horse_key:str):
+        """设置按键"""
+        list_key = [select_key, attack_key, position_key, horse_key]
+        key_api.initKey(list_key)
+        
     
     def stopCurrentTask(self):
         """停止当前任务"""
