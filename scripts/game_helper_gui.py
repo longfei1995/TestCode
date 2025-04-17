@@ -54,7 +54,7 @@ class GameHelperGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # 设置窗口标题 && 大小
-        self.setWindowTitle("GameHelper Design By: 豆子 Test By: 苏苏 Version:25/04/14")
+        self.setWindowTitle("Game Helper Design by 豆子 25/04/17")
         self.setGeometry(100, 100, 500, 600)  # 调整窗口更大一些
         
         # 设置应用图标
@@ -94,7 +94,9 @@ class GameHelperGUI(QMainWindow):
         sys.stdout = self.log_stream
         
         # 打印欢迎信息
+        print("运行前请一定确保阅读了说明书.")
         print("游戏辅助工具已启动，请选择功能开始...")
+        
         
     def setTabs(self):
         """设置选项卡窗口部件及标签页"""
