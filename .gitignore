@@ -9,6 +9,7 @@ temp/
 .idea/
 debug/
 log/
+dist/
 
 # file
 *.pdf

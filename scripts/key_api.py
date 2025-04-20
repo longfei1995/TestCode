@@ -593,12 +593,15 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     if seed_level == 1:
         kPointLevel = pyautogui.Point(x=116, y=279)
         auto_find_seed_pos = ("57", "204")
+        kPointPetLocation = pyautogui.Point(x=2400, y=411)
     elif seed_level == 2:
         kPointLevel = pyautogui.Point(x=111, y=304)
-        auto_find_seed_pos = ("152", "238")
+        auto_find_seed_pos = ("152", "238") 
+        kPointPetLocation = pyautogui.Point(x=2400, y=411)
     elif seed_level == 3:
         kPointLevel = pyautogui.Point(x=107, y=330)
         auto_find_seed_pos = ("73", "71")
+        kPointPetLocation = pyautogui.Point(x=2390, y=411)
     # elif seed_level == 4:
     #     kPointLevel = pyautogui.Point(x=111, y=304)
     #     auto_find_seed_pos = ("152", "238")
