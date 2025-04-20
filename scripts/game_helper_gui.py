@@ -54,7 +54,7 @@ class GameHelperGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # 设置窗口标题 && 大小
-        self.setWindowTitle("Game Helper Design by 豆子 25/04/17")
+        self.setWindowTitle("Game Helper Design by 豆子 25/04/20")
         self.setGeometry(100, 100, 500, 600)  # 调整窗口更大一些
         
         # 设置应用图标
@@ -106,21 +106,24 @@ class GameHelperGUI(QMainWindow):
         self.tabs_ = QTabWidget()
         self.tabs_layout_.addWidget(self.tabs_)
         
-        # 2. 创建三个选项卡
+        # 2. 创建选项卡
         self.tab_init_ = QWidget()
         self.tab_men_pai_ = QWidget()
         self.tab_fan_zei_ = QWidget()
         self.tab_dig_seed_ = QWidget()
+        self.tab_auto_return_ = QWidget()
         self.tabs_.addTab(self.tab_init_, "设置按键")
         self.tabs_.addTab(self.tab_men_pai_, "门派挂机")
         self.tabs_.addTab(self.tab_fan_zei_, "刷反贼/光头")
         self.tabs_.addTab(self.tab_dig_seed_, "采集种子")
+        self.tabs_.addTab(self.tab_auto_return_, "自动回点")
         
         # 初始化各选项卡的布局
         self.setInitTab()
         self.setMenPaiTab()
         self.setFanZeiTab()
         self.setDigSeedTab()
+        self.setAutoReturnTab()
 
     def setLog(self):
         """设置日志区域"""
@@ -311,7 +314,7 @@ class GameHelperGUI(QMainWindow):
         
         # 选择种子等级
         seed_level_combo = QComboBox()
-        seed_level_combo.addItems(["1", "2"])
+        seed_level_combo.addItems(["1", "2", "3"])
         form_layout.addRow("采集种子等级:", seed_level_combo)
             
         # 添加启动按钮
@@ -335,6 +338,64 @@ class GameHelperGUI(QMainWindow):
         layout.addLayout(form_layout)
         layout.addLayout(btn_layout)
         self.tab_dig_seed_.setLayout(layout)
+        
+    def setAutoReturnTab(self):
+        """设置自动回点选项卡"""
+        layout = QVBoxLayout()
+        
+        # 添加表单布局
+        form_layout = QFormLayout()
+        
+        # 场景选择下拉框
+        scene_combo = QComboBox()
+        scene_combo.addItems(["黄龙洞", "苗人洞", "水晶湖", "雪原"])
+        form_layout.addRow("选择回点场景:", scene_combo)
+        
+        # 坐标输入布局
+        coord_layout = QGridLayout()
+        # 设置列的伸缩因子（相对宽度比例）
+        coord_layout.setColumnStretch(0, 1)    # X: 标签占比较小
+        coord_layout.setColumnStretch(1, 2)    # X坐标输入框占比较大
+        coord_layout.setColumnStretch(2, 1)    # Y: 标签占比较小
+        coord_layout.setColumnStretch(3, 2)    # Y坐标输入框占比较大
+        
+        # 创建x,y坐标输入
+        x_label = QLabel("X:")
+        x_coord_input = QLineEdit("129")
+        y_label = QLabel("Y:")
+        y_coord_input = QLineEdit("189")
+        
+        # 添加到布局
+        coord_layout.addWidget(x_label, 0, 0, Qt.AlignmentFlag.AlignCenter)
+        coord_layout.addWidget(x_coord_input, 0, 1, Qt.AlignmentFlag.AlignCenter)
+        coord_layout.addWidget(y_label, 0, 2, Qt.AlignmentFlag.AlignCenter)
+        coord_layout.addWidget(y_coord_input, 0, 3, Qt.AlignmentFlag.AlignCenter)
+        form_layout.addRow("回点坐标:", coord_layout)
+        
+        # 添加启动按钮
+        start_btn = QPushButton("开始回点")
+        start_btn.setFixedWidth(kButtonWidth)
+        start_btn.clicked.connect(lambda: self.startAutoReturn(
+            scene_combo.currentText(),
+            x_coord_input.text(),
+            y_coord_input.text()
+        ))
+        
+        # 添加停止按钮
+        stop_btn = QPushButton("停止")
+        stop_btn.setFixedWidth(kButtonWidth)
+        stop_btn.clicked.connect(self.stopCurrentTask)
+        
+        # 组织按钮布局
+        btn_layout = QHBoxLayout()
+        btn_layout.addWidget(start_btn)
+        btn_layout.addWidget(stop_btn)
+        
+        # 将布局添加到主布局
+        layout.addLayout(form_layout)
+        layout.addLayout(btn_layout)
+        
+        self.tab_auto_return_.setLayout(layout)
     
     def clearLog(self):
         """清除日志"""
@@ -477,6 +538,37 @@ class GameHelperGUI(QMainWindow):
             print("已发送停止信号，任务将在下一个循环结束")
         else:
             print("当前没有运行中的任务")
+
+    def startAutoReturn(self, scene_name:str, x_coord:str, y_coord:str):
+        """开始自动回点任务
+        Args:
+            scene_name (str): 场景名称
+            x_coord (str): X坐标值
+            y_coord (str): Y坐标值
+        """
+        try:
+            # 重置停止标志
+            self.stop_flag = False
+            
+            # 创建并启动线程
+            def run_task():
+                try:
+                    print(f"开始自动回点，场景:{scene_name}，坐标({x_coord}, {y_coord})")
+                    key_api.autoReturnSomewhere(scene_name, x_coord, y_coord, self)
+                    print("自动回点任务已结束")
+                except Exception as e:
+                    print(f"执行自动回点时出错: {e}")
+            
+            if self.current_thread and self.current_thread.is_alive():
+                print("警告: 有任务正在运行，请先停止当前任务")
+                return
+                
+            self.current_thread = threading.Thread(target=run_task)
+            self.current_thread.daemon = True
+            self.current_thread.start()
+            
+        except Exception as e:
+            print(f"错误: 启动自动回点任务失败: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

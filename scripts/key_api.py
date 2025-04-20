@@ -56,6 +56,8 @@ class ImagePath:
         enter = "other\\que_ding.png"                       # 确认进入不加杀气场景
         bao_guo: str = "other\\bao_guo.png"                 # 背包栏图标
         ti_jiao_ling_yao: str = "other\\ti_jiao_ling_yao.png" # 提交灵药
+        meng_po: str = "other\\meng_po.png"                   # 孟婆
+        da_li: str = "other\\da_li.png"                       # 大理
     class DaLi:
         one: str = "da_li\\1.png"       # 右上角"大理"图片
         two: str = "da_li\\2.png"       # 崔逢九传送
@@ -209,22 +211,29 @@ class GameHelper:
 
     def isInDiFuAndEscape(self):
         # 判断是否在地府
+        kPointAutoFind = pyautogui.Point(x=2483, y=246)
         is_in_di_fu = self.isInScene(ImagePath.Other.di_fu_1, confidence=0.9)
         if is_in_di_fu:
-            print(f"现在时间是{time.strftime('%Y-%m-%d %H:%M:%S')}，在地府")
+            print(f"在地府，开始逃离")
             # 开始逃离地府
-            is_find_pic, pic_region = self.findPicInRegion(ImagePath.Other.di_fu_2, kRegionScreenFull, confidence=0.7)
-            if is_find_pic and pic_region is not None:
-                pic_center_position = self.getRegionCenter(pic_region)
-                self.mouseMoveAndOnceClicked(pic_center_position.x, pic_center_position.y)
-                print("逃离地府成功")
-                # 等待15s
-                time.sleep(15)
-                return True
+            self.mouseMoveAndOnceClicked(kPointAutoFind.x, kPointAutoFind.y)
+            time.sleep(1)
+            is_find_meng_po, region = self.findPicInRegion(ImagePath.Other.meng_po, kRegionScreenOneQuarter, confidence=0.8)
+            if is_find_meng_po:
+                region_pos = self.getRegionCenter(region)
+                self.mouseMoveAndDoubleClicked(region_pos.x, region_pos.y)
+                time.sleep(10)
+                is_find_da_li, region = self.findPicInRegion(ImagePath.Other.da_li, kRegionScreenLeft, confidence=0.8)
+                if is_find_da_li:
+                    region_pos = self.getRegionCenter(region)
+                    self.mouseMoveAndOnceClicked(region_pos.x, region_pos.y)
+                    time.sleep(5)
+                    print("找到大理, 逃离成功")
+                    return True
             else:
-                print("未找到地府光圈, 逃离失败")      
+                print("未找到孟婆, 逃离失败")      
         else:
-            print("不在地府")
+            pass
         return False
     
     def getRegionCenter(self, region):
@@ -418,7 +427,7 @@ class GameHelper:
         Returns:
             bool: 是否成功检测到人物静止
         """
-        region = (1218, 445, 109, 88)  # 人物周围区域
+        region = (1138, 1133, 239, 100)  # 人物周围区域
         start_time = time.time()
         
         print(f"开始持续监测人物是否静止，最长等待{max_wait_time}秒...")
@@ -501,13 +510,13 @@ def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
             # 检查是否在大理
             is_in_dali = game_helper.isInScene(ImagePath.DaLi.one, confidence=0.8)
             if is_in_dali:
-                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 在大理")
+                print(f"当前在大理")
                 iter += 1
                 if (scene_name == ImagePath.MingJiao.one):
-                    print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 从大理去明教")
+                    print(f"从大理去明教")
                     game_helper.fromDaliToMenPai(ImagePath.MingJiao.one, x, y)
                 elif (scene_name == ImagePath.EMei.one):
-                    print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 从大理去峨眉")
+                    print(f"从大理去峨眉")
                     game_helper.fromDaliToMenPai(ImagePath.EMei.one, x, y)
         # 每2000次循环: 吃药，回到地点并重置iter
         if iter % 2000 == 0:
@@ -523,12 +532,12 @@ def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
             # 只有小地图有怪物，才进行战斗
             is_monster_in_mini_map = game_helper.isMonsterInMiniMap(confidence=confidence)
             if is_monster_in_mini_map:
-                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图有怪物")
+                print(f"小地图有怪物")
                 game_helper.autoFightOnce()
             else:
-                print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 小地图没有怪物")  
+                print(f"小地图没有怪物")  
         else:
-            print(f"当前时间{time.strftime('%Y-%m-%d %H:%M:%S')}, 不在场景中{scene_name}")
+            print(f"不在场景中{scene_name}")
         # 休息间隔
         print(f"当前循环次数: {iter}次")
         time.sleep(0.2)
@@ -550,13 +559,13 @@ def autoFightOther(scene_name:str, gui=None):
             
         is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionScreenOneQuarter, confidence=0.8)
         if is_in_scene:
-            print(f"当前在场景中{scene_name},时间 = {time.strftime('%Y-%m-%d %H:%M:%S')}, 正在打怪")
+            print(f"当前在场景中{scene_name}, 正在打怪")
             game_helper.keyPress(kKeyAutoSelect)
             time.sleep(random.uniform(0.2, 0.3))
             game_helper.keyPress(kKeyAutoAttack)
             time.sleep(random.uniform(0.5, 0.6))
         else:
-            print(f"当前不在场景中{scene_name},时间 = {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"当前不在场景中{scene_name}")
             time.sleep(1)
 
 def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
@@ -565,7 +574,7 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
         print("收到停止信号，取消执行")
         return
     # 如果iter为奇数，则采集果实，否则打怪
-    is_dig_red = True
+    is_dig_red = True  
     if iter % 2 == 1:
         is_dig_red = True
     else:
@@ -576,7 +585,7 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     kPointAccept = pyautogui.Point(x=27, y=535)
     kPointComplete = pyautogui.Point(x=65, y=535) 
     kPointGuoShi = pyautogui.Point(x=1282, y=703)
-    kPointPetLocation = pyautogui.Point(x=2400, y=411)
+    kPointPetLocation = pyautogui.Point(x=2390, y=411)
     kPointMonsterLocation = pyautogui.Point(x=149, y=259)
     kPointPackage = pyautogui.Point(x=1517, y=1377)
     kPointLevel = pyautogui.Point(x=116, y=279)
@@ -587,6 +596,13 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     elif seed_level == 2:
         kPointLevel = pyautogui.Point(x=111, y=304)
         auto_find_seed_pos = ("152", "238")
+    elif seed_level == 3:
+        kPointLevel = pyautogui.Point(x=107, y=330)
+        auto_find_seed_pos = ("73", "71")
+    # elif seed_level == 4:
+    #     kPointLevel = pyautogui.Point(x=111, y=304)
+    #     auto_find_seed_pos = ("152", "238")
+        
     # 1. 通用流程：上坐骑 -> 双击乘黄长老 -> 点击左侧任务 -> 点击接受任务
     # 1.1 上坐骑
     print("上坐骑")
@@ -713,25 +729,109 @@ def initKey(init_list:list[str]):
         print(f"按键设置成功: 自动选择目标按键{kKeyAutoSelect}, 自动攻击按键{kKeyAutoAttack}, 定位符按键{kKeyDingWeiFu}, 骑马按键{kKeyHorse}")
     else:
         raise ValueError("init_list 长度必须为4")
-    
+
+def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
+    kPointHuangLongDong = pyautogui.Point(x=1420, y=797)
+    kPointMiaoRenDong = pyautogui.Point(x=1383, y=856)
+    kPointShuiJingHu = pyautogui.Point(x=1290, y=331)
+    kPointXueYuan = pyautogui.Point(x=1283, y=230)
+    game_helper = GameHelper()
+    # 剩余5s执行脚本
+    for i in range(5):
+        time.sleep(1)
+        print(f"剩余{5 - i}秒执行脚本....")
+    # 检查停止标志
+    while True:
+        if gui and gui.stop_flag:
+            print("收到停止信号，取消执行")
+            return
+        # 判断是否在地府
+        is_escape_di_fu = game_helper.isInDiFuAndEscape()
+        # is_escape_di_fu = True
+        if is_escape_di_fu:
+            print("逃离地府成功")
+            time.sleep(1)
+            # 1.1 上马
+            game_helper.rideHorse()
+            # 1.2 点击世界地图
+            game_helper.keyPress('m')
+            time.sleep(1)
+            # 1.3 点击对应场景
+            if (scene_name == "黄龙洞"):
+                game_helper.mouseMoveAndOnceClicked(kPointHuangLongDong.x, kPointHuangLongDong.y)
+            elif (scene_name == "苗人洞"):
+                game_helper.mouseMoveAndOnceClicked(kPointMiaoRenDong.x, kPointMiaoRenDong.y)
+            elif (scene_name == "水晶湖"):
+                game_helper.mouseMoveAndOnceClicked(kPointShuiJingHu.x, kPointShuiJingHu.y)
+            elif (scene_name == "雪原"):
+                game_helper.mouseMoveAndOnceClicked(kPointXueYuan.x, kPointXueYuan.y)
+            else:
+                print(f"当前场景{scene_name}不支持自动回点")
+            # 1.4 点击场景确认框
+            time.sleep(1)
+            game_helper.mouseMoveAndOnceClicked(kPointScreenCenter.x, kPointScreenCenter.y)
+            time.sleep(1)
+            game_helper.moveSceneConfirm()
+            time.sleep(1)
+            game_helper.keyPress('esc')
+            # 1.5 从大理去对应场景
+            print(f"大理到{scene_name}寻路中，等待人物静止, 最大等待时间500s...")
+            game_helper.isPersonStop(max_wait_time=500, threshold=5.0)
+            # 1.6 局部寻路到指定坐标
+            game_helper.autoFind(x=x, y=y)
+            print(f"寻路到指定坐标x={x}, y={y}中，等待人物静止, 最大等待时间120s...")
+            game_helper.isPersonStop(max_wait_time=120, threshold=5.0)
+            # 特殊场景需要特殊操作一下
+            if (scene_name == "黄龙洞"):
+                int_x = int(x)  
+                int_y = int(y)
+                if int_x > 100 and int_y > 190:
+                    print("在黄龙洞下方区域，可以不穿越光洞")
+                    pass
+                else:
+                    # 说明在上方区域，需要特殊操作
+                    print("在黄龙洞上方区域，需要穿越光洞")
+                    game_helper.autoFind("220", "205")
+                    time.sleep(1)
+                    game_helper.isPersonStop(max_wait_time=30, threshold=5.0)
+                    game_helper.autoFind(x, y)
+                    print(f"穿越光洞后，寻路到指定坐标x={x}, y={y}中，等待人物静止, 最大等待时间180s...")
+                    game_helper.isPersonStop(max_wait_time=180, threshold=5.0)
+            # 1.7 下马
+            game_helper.getDownHorse()
+            # 1.8 开始战斗
+            game_helper.keyPress('l')
+            time.sleep(1)
+        else:
+            print(f"不在地府, 60s后重新检查")
+        time.sleep(60)
+        
+        
+        
+        
+        
+
 if __name__ == '__main__':
     # 门派挂机
     # autoFight(ImagePath.MingJiao.one, confidence=0.8, x="77", y="147") 
-    autoFight(ImagePath.EMei.one, confidence=0.7, x="54", y="144") 
+    # autoFight(ImagePath.EMei.one, confidence=0.7, x="54", y="144") 
     
     # 刷反刷光头
     # autoFightOther(ImagePath.Other.fan_zei)
     # autoFightOther(ImagePath.EMei.one)
     
     # 获取屏幕区域
-    # game_helper = GameHelper()    
-    # region = game_helper.getScreenRegion()
-    # region_center = game_helper.getRegionCenter(region)
-    # print(region_center)
+    game_helper = GameHelper()    
+    region = game_helper.getScreenRegion()
+    region_center = game_helper.getRegionCenter(region)
+    print(region_center)
+    
+    # 自动回点  
+    # autoReturnSomewhere(scene_name="雪原", x="129", y="189")
     
     # 保存图片
-    # game_helper = GameHelper()  
-    
+    # game_helper = GameHelper()    
+      
     # 采集种子10次
     # for i in range(5):
     #     time.sleep(1)        
