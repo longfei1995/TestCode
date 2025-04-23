@@ -176,19 +176,20 @@ class GameHelperGUI(QMainWindow):
         attack_label = QLabel("攻击按键:")
         position_label = QLabel("定位符按键:")
         horse_label = QLabel("骑马按键:")
-        
+        pet_fight_label = QLabel("宠物战斗按键:")
         # 3. 设置输入框
         select_input = QLineEdit("q")
         attack_input = QLineEdit("e")
         position_input = QLineEdit("f9")
-        horse_input = QLineEdit("f10")      
+        horse_input = QLineEdit("f10")
+        pet_fight_input = QLineEdit("f8")
         
         # 4. 添加到布局
         key_select_layout.addRow(select_label, select_input)
         key_select_layout.addRow(attack_label, attack_input)
         key_select_layout.addRow(position_label, position_input)
         key_select_layout.addRow(horse_label, horse_input)
-        
+        key_select_layout.addRow(pet_fight_label, pet_fight_input)
         # 5. 添加设置按钮
         set_btn = QPushButton("设置")
         set_btn.setFixedWidth(kButtonWidth)
@@ -196,7 +197,8 @@ class GameHelperGUI(QMainWindow):
             select_input.text(),
             attack_input.text(),
             position_input.text(),
-            horse_input.text()
+            horse_input.text(),
+            pet_fight_input.text()
         ))
         
         # 6. 添加到布局
@@ -524,12 +526,11 @@ class GameHelperGUI(QMainWindow):
         except Exception as e:
             print(f"错误: 启动采集种子任务失败: {str(e)}")
     
-    def setKey(self, select_key:str, attack_key:str, position_key:str, horse_key:str):
+    def setKey(self, select_key:str, attack_key:str, position_key:str, horse_key:str, pet_fight_key:str):
         """设置按键"""
-        list_key = [select_key, attack_key, position_key, horse_key]
+        list_key = [select_key, attack_key, position_key, horse_key, pet_fight_key]
         key_api.initKey(list_key)
         
-    
     def stopCurrentTask(self):
         """停止当前任务"""
         if self.current_thread and self.current_thread.is_alive():

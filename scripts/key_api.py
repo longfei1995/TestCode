@@ -35,6 +35,7 @@ kKeyAutoSelect = 'q'
 kKeyAutoAttack = 'e'
 kKeyDingWeiFu = 'f9'
 kKeyHorse = 'f10'
+kKeyPetFight = 'f8'
 # 背包中，各个项目相对于背包栏图标的像素：
 @dataclass
 class Bias:
@@ -724,14 +725,16 @@ def initKey(init_list:list[str]):
     global kKeyAutoAttack
     global kKeyDingWeiFu
     global kKeyHorse
-    if len(init_list) == 4:
+    global kKeyPetFight
+    if len(init_list) == 5:
         kKeyAutoSelect = init_list[0]
         kKeyAutoAttack = init_list[1]
         kKeyDingWeiFu = init_list[2]
-        kKeyHorse = init_list[3]
-        print(f"按键设置成功: 自动选择目标按键{kKeyAutoSelect}, 自动攻击按键{kKeyAutoAttack}, 定位符按键{kKeyDingWeiFu}, 骑马按键{kKeyHorse}")
+        kKeyHorse = init_list[3]    
+        kKeyPetFight = init_list[4]
+        print(f"按键设置成功: 自动选择目标按键{kKeyAutoSelect}, 自动攻击按键{kKeyAutoAttack}, 定位符按键{kKeyDingWeiFu}, 骑马按键{kKeyHorse}, 宠物战斗按键{kKeyPetFight}")
     else:
-        raise ValueError("init_list 长度必须为4")
+        raise ValueError("init_list 长度必须为5")
 
 def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
     kPointHuangLongDong = pyautogui.Point(x=1420, y=797)
@@ -802,7 +805,13 @@ def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
                     game_helper.isPersonStop(max_wait_time=180, threshold=5.0)
             # 1.7 下马
             game_helper.getDownHorse()
-            # 1.8 开始战斗
+            time.sleep(1)
+            # 1.8 召唤宠物
+            if scene_name == "雪原":
+                print(f"在雪原，召唤宠物，不怕被人害刀.....其他场景不召唤")
+                game_helper.keyPress(kKeyPetFight)
+                time.sleep(1)
+            # 1.9 开始战斗
             game_helper.keyPress('l')
             time.sleep(1)
         else:
