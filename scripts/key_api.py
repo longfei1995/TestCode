@@ -594,7 +594,7 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
     if seed_level == 1:
         kPointLevel = pyautogui.Point(x=116, y=279)
         auto_find_seed_pos = ("57", "204")
-        kPointPetLocation = pyautogui.Point(x=2400, y=411)
+        kPointPetLocation = pyautogui.Point(x=2380, y=411)
     elif seed_level == 2:
         kPointLevel = pyautogui.Point(x=111, y=304)
         auto_find_seed_pos = ("152", "238") 
@@ -669,7 +669,7 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
         # 1.1 点击背包栏
         game_helper.mouseMoveAndOnceClicked(kPointPackage.x, kPointPackage.y)
         time.sleep(1)
-        _, origin_region = game_helper.findPicInRegion(ImagePath.Other.bao_guo, kRegionScreenFourQuarter, confidence=0.8, is_need_save_debug_image=True)
+        _, origin_region = game_helper.findPicInRegion(ImagePath.Other.bao_guo, kRegionScreenRight, confidence=0.8, is_need_save_debug_image=True)
         origin_region_center = game_helper.getRegionCenter(origin_region)
         ren_wu_lan_pos = pyautogui.Point(x=origin_region_center.x + Bias.ren_wu.x, y=origin_region_center.y + Bias.ren_wu.y)
         cell_0_0_pos = pyautogui.Point(x=origin_region_center.x + Bias.cell_0_0.x, y=origin_region_center.y + Bias.cell_0_0.y)
@@ -741,6 +741,7 @@ def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
     kPointMiaoRenDong = pyautogui.Point(x=1383, y=856)
     kPointShuiJingHu = pyautogui.Point(x=1290, y=331)
     kPointXueYuan = pyautogui.Point(x=1283, y=230)
+    kPointSongShan = pyautogui.Point(x=1308, y=666)
     game_helper = GameHelper()
     # 剩余5s执行脚本
     for i in range(5):
@@ -771,6 +772,8 @@ def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
                 game_helper.mouseMoveAndOnceClicked(kPointShuiJingHu.x, kPointShuiJingHu.y)
             elif (scene_name == "雪原"):
                 game_helper.mouseMoveAndOnceClicked(kPointXueYuan.x, kPointXueYuan.y)
+            elif (scene_name == "嵩山") :
+                game_helper.mouseMoveAndOnceClicked(kPointSongShan.x, kPointSongShan.y)
             else:
                 print(f"当前场景{scene_name}不支持自动回点")
             # 1.4 点击场景确认框
@@ -818,10 +821,6 @@ def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
             print(f"不在地府, 60s后重新检查")
         time.sleep(60)
         
-        
-        
-        
-        
 
 if __name__ == '__main__':
     # 门派挂机
@@ -838,7 +837,7 @@ if __name__ == '__main__':
     region_center = game_helper.getRegionCenter(region)
     print(region_center)
     
-    # 自动回点  
+    # 自动回点    
     # autoReturnSomewhere(scene_name="雪原", x="129", y="189")
     
     # 保存图片

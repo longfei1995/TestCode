@@ -54,7 +54,7 @@ class GameHelperGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         # 设置窗口标题 && 大小
-        self.setWindowTitle("Game Helper Design by 豆子 25/04/20")
+        self.setWindowTitle("Author: 豆子 Update: 25/05/17")
         self.setGeometry(100, 100, 500, 600)  # 调整窗口更大一些
         
         # 设置应用图标
@@ -350,7 +350,7 @@ class GameHelperGUI(QMainWindow):
         
         # 场景选择下拉框
         scene_combo = QComboBox()
-        scene_combo.addItems(["黄龙洞", "苗人洞", "水晶湖", "雪原"])
+        scene_combo.addItems(["黄龙洞", "苗人洞", "水晶湖", "雪原", "嵩山"])
         form_layout.addRow("选择回点场景:", scene_combo)
         
         # 坐标输入布局

@@ -1,0 +1,6 @@
+# 1. 进入scripts目录
+python -m PyInstaller --clean game_helper.spec
+
+# 2. 分发方法
+直接分发dist/GameHelper目录（整个文件夹）
+使用ZIP压缩工具打包dist/GameHelper目录成zip文件
