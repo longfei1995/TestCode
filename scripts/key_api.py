@@ -36,6 +36,7 @@ kKeyAutoAttack = 'e'
 kKeyDingWeiFu = 'f9'
 kKeyHorse = 'f10'
 kKeyPetFight = 'f8'
+kKeyTanXiaoZiRuo = 'f7'
 # 背包中，各个项目相对于背包栏图标的像素：
 @dataclass
 class Bias:
@@ -487,7 +488,7 @@ class GameHelper:
         print(f"等待超时({max_wait_time}秒)，人物仍未静止")
         return False
 
-def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
+def autoFightMenPai(scene_name:str, confidence:float, x:str, y:str, gui=None):
     game_helper = GameHelper()
     # 执行前等待
     for i in range(5):
@@ -519,7 +520,7 @@ def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
                 elif (scene_name == ImagePath.EMei.one):
                     print(f"从大理去峨眉")
                     game_helper.fromDaliToMenPai(ImagePath.EMei.one, x, y)
-        # 每2000次循环: 吃药，回到地点并重置iter
+        # 每2000次循环: 回到地点并重置iter
         if iter % 2000 == 0:
             iter = 0
             game_helper.autoFind(x, y)
@@ -543,7 +544,7 @@ def autoFight(scene_name:str, confidence:float, x:str, y:str, gui=None):
         print(f"当前循环次数: {iter}次")
         time.sleep(0.2)
 
-def autoFightOther(scene_name:str, gui=None):
+def autoFightFanZei(gui=None):
     game_helper = GameHelper()
     for i in range(5):
         time.sleep(1)
@@ -558,18 +559,22 @@ def autoFightOther(scene_name:str, gui=None):
             print("收到停止信号，结束任务")
             return
             
-        is_in_scene, _ = game_helper.findPicInRegion(scene_name, kRegionScreenOneQuarter, confidence=0.8)
-        if is_in_scene:
-            print(f"当前在场景中{scene_name}, 正在打怪")
+        is_in_fan_zei, _ = game_helper.findPicInRegion(ImagePath.Other.fan_zei, kRegionScreenOneQuarter, confidence=0.8)
+        is_in_guang_tou, _ = game_helper.findPicInRegion(ImagePath.Other.guang_tou, kRegionScreenOneQuarter, confidence=0.8)
+        if is_in_fan_zei or is_in_guang_tou:
+            if is_in_fan_zei:
+                print(f"当前在反贼场景中, 正在打怪....")
+            elif is_in_guang_tou:
+                print(f"当前在光头场景中, 正在打怪....")
             game_helper.keyPress(kKeyAutoSelect)
             time.sleep(random.uniform(0.2, 0.3))
             game_helper.keyPress(kKeyAutoAttack)
             time.sleep(random.uniform(0.5, 0.6))
         else:
-            print(f"当前不在场景中{scene_name}")
+            print(f"当前不在反贼或光头场景中")
             time.sleep(1)
 
-def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
+def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None, use_talk:bool = False):
     # 检查停止标志
     if gui and gui.stop_flag:
         print("收到停止信号，取消执行")
@@ -691,6 +696,11 @@ def autoDigSeed(iter:int = 1, seed_level:int = 1, gui=None):
             print("等待超时，强制继续后续动作")
         # 2.4 下坐骑
         game_helper.getDownHorse()
+        # 如果启用了谈笑自若，则使用技能
+        if use_talk:
+            print("使用谈笑自若技能")
+            game_helper.keyPress(kKeyTanXiaoZiRuo)
+            time.sleep(1)
         # 2.5 召唤怪物 (点击背包栏 ->点击任务栏 -> 右击第一格)
         game_helper.mouseMoveAndOnceClicked(kPointPackage.x, kPointPackage.y)
         time.sleep(1)
@@ -726,15 +736,19 @@ def initKey(init_list:list[str]):
     global kKeyDingWeiFu
     global kKeyHorse
     global kKeyPetFight
-    if len(init_list) == 5:
+    global kKeyTanXiaoZiRuo
+    if len(init_list) == 6:
         kKeyAutoSelect = init_list[0]
         kKeyAutoAttack = init_list[1]
         kKeyDingWeiFu = init_list[2]
         kKeyHorse = init_list[3]    
         kKeyPetFight = init_list[4]
-        print(f"按键设置成功: 自动选择目标按键{kKeyAutoSelect}, 自动攻击按键{kKeyAutoAttack}, 定位符按键{kKeyDingWeiFu}, 骑马按键{kKeyHorse}, 宠物战斗按键{kKeyPetFight}")
+        kKeyTanXiaoZiRuo = init_list[5]
+        print(f"按键设置成功: 自动选择目标：{kKeyAutoSelect}, 自动攻击：{kKeyAutoAttack}")
+        print(f"按键设置成功: 定位符：{kKeyDingWeiFu}, 骑马：{kKeyHorse}")
+        print(f"按键设置成功: 宠物战斗：{kKeyPetFight}, 谈笑自若：{kKeyTanXiaoZiRuo}")
     else:
-        raise ValueError("init_list 长度必须为5")
+        print(f"init_list 长度必须为6")
 
 def autoReturnSomewhere(scene_name:str, x:str, y:str, gui=None):
     kPointHuangLongDong = pyautogui.Point(x=1420, y=797)

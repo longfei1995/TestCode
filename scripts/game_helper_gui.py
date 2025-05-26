@@ -5,7 +5,8 @@ import os  # 添加 os 模块导入
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QWidget, 
                             QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
                             QLineEdit, QPushButton, QFormLayout, QGroupBox, 
-                            QMessageBox, QSpinBox, QTextEdit, QSplitter, QGridLayout)
+                            QMessageBox, QSpinBox, QTextEdit, QSplitter, QGridLayout,
+                            QCheckBox)
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QColor, QTextCursor, QIcon
 import key_api  # 导入原始脚本
@@ -177,29 +178,31 @@ class GameHelperGUI(QMainWindow):
         position_label = QLabel("定位符按键:")
         horse_label = QLabel("骑马按键:")
         pet_fight_label = QLabel("宠物战斗按键:")
+        tan_xiao_zi_ruo_label = QLabel("谈笑自若按键(不是星宿派可以保持默认值):")
         # 3. 设置输入框
         select_input = QLineEdit("q")
         attack_input = QLineEdit("e")
         position_input = QLineEdit("f9")
         horse_input = QLineEdit("f10")
         pet_fight_input = QLineEdit("f8")
-        
+        tan_xiao_zi_ruo_input = QLineEdit("f7")
         # 4. 添加到布局
         key_select_layout.addRow(select_label, select_input)
         key_select_layout.addRow(attack_label, attack_input)
         key_select_layout.addRow(position_label, position_input)
         key_select_layout.addRow(horse_label, horse_input)
         key_select_layout.addRow(pet_fight_label, pet_fight_input)
+        key_select_layout.addRow(tan_xiao_zi_ruo_label, tan_xiao_zi_ruo_input)
         # 5. 添加设置按钮
         set_btn = QPushButton("设置")
         set_btn.setFixedWidth(kButtonWidth)
-        set_btn.clicked.connect(lambda: self.setKey(
-            select_input.text(),
+        list_key = [select_input.text(),
             attack_input.text(),
             position_input.text(),
             horse_input.text(),
-            pet_fight_input.text()
-        ))
+            pet_fight_input.text(),
+            tan_xiao_zi_ruo_input.text()]
+        set_btn.clicked.connect(lambda: self.setKey(list_key))
         
         # 6. 添加到布局
         layout.addLayout(key_select_layout)
@@ -274,18 +277,10 @@ class GameHelperGUI(QMainWindow):
         """设置刷反贼/光头选项卡"""
         layout = QVBoxLayout()
         
-        # 添加选择下拉框
-        form_layout = QFormLayout()
-        fan_zei_combo = QComboBox()
-        fan_zei_combo.addItems(["反贼", "光头"])
-        form_layout.addRow("刷反/光头:", fan_zei_combo)
-        
         # 添加启动按钮
         start_btn = QPushButton("开始刷怪")
         start_btn.setFixedWidth(kButtonWidth)
-        start_btn.clicked.connect(lambda: self.startFanZei(
-            fan_zei_combo.currentText()
-        ))
+        start_btn.clicked.connect(lambda: self.startFanZei())
         
         # 添加停止按钮
         stop_btn = QPushButton("停止")
@@ -297,7 +292,6 @@ class GameHelperGUI(QMainWindow):
         btn_layout.addWidget(start_btn)
         btn_layout.addWidget(stop_btn)
         
-        layout.addLayout(form_layout)
         layout.addLayout(btn_layout)
         self.tab_fan_zei_.setLayout(layout)
         
@@ -318,13 +312,19 @@ class GameHelperGUI(QMainWindow):
         seed_level_combo = QComboBox()
         seed_level_combo.addItems(["1", "2", "3"])
         form_layout.addRow("采集种子等级:", seed_level_combo)
+        
+        # 添加谈笑自若勾选框
+        use_talk_checkbox = QCheckBox()
+        use_talk_checkbox.setChecked(False)
+        form_layout.addRow("使用谈笑自若:", use_talk_checkbox)
             
         # 添加启动按钮
         start_btn = QPushButton("开始采集")
         start_btn.setFixedWidth(kButtonWidth)
         start_btn.clicked.connect(lambda: self.startDigSeed(
             iter_spin.value(),
-            int(seed_level_combo.currentText())
+            int(seed_level_combo.currentText()),
+            use_talk_checkbox.isChecked()
         ))
         
         # 添加停止按钮
@@ -451,7 +451,7 @@ class GameHelperGUI(QMainWindow):
             def run_task():
                 try:
                     print(f"开始在{men_pai}挂机，坐标({x_coord}, {y_coord})")
-                    key_api.autoFight(scene_name, confidence_float, x_coord, y_coord, self)
+                    key_api.autoFightMenPai(scene_name, confidence_float, x_coord, y_coord, self)
                     print("挂机任务已结束")
                 except Exception as e:
                     print(f"执行门派挂机时出错: {e}")
@@ -467,27 +467,18 @@ class GameHelperGUI(QMainWindow):
         except Exception as e:
             print(f"错误: 启动挂机任务失败: {str(e)}")
     
-    def startFanZei(self, monster_type):
+    def startFanZei(self):
         """开始刷反贼/光头任务"""
         try:
-            # 根据选择的类型获取相应的图片路径
-            scene_name = ""
-            if monster_type == "反贼":
-                scene_name = key_api.ImagePath.Other.fan_zei
-            elif monster_type == "光头":
-                scene_name = key_api.ImagePath.Other.guang_tou
-            
             # 重置停止标志
             self.stop_flag = False
             
             # 创建并启动线程
             def run_task():
                 try:
-                    print(f"开始刷{monster_type}")
-                    key_api.autoFightOther(scene_name, self)
-                    print(f"刷{monster_type}任务已结束")
+                    key_api.autoFightFanZei(self)
                 except Exception as e:
-                    print(f"执行刷{monster_type}时出错: {e}")
+                    print(f"执行刷反贼/光头时出错: {e}")
             
             if self.current_thread and self.current_thread.is_alive():
                 print("警告: 有任务正在运行，请先停止当前任务")
@@ -500,8 +491,13 @@ class GameHelperGUI(QMainWindow):
         except Exception as e:
             print(f"错误: 启动刷怪任务失败: {str(e)}")
     
-    def startDigSeed(self, iter_val:int, seed_level:int):
-        """开始采集种子任务"""
+    def startDigSeed(self, iter_val:int, seed_level:int, use_talk:bool):
+        """开始采集种子任务
+        Args:
+            iter_val (int): 采集次数
+            seed_level (int): 种子等级
+            use_talk (bool): 是否使用谈笑自若
+        """
         try:
             # 重置停止标志
             self.stop_flag = False
@@ -513,7 +509,7 @@ class GameHelperGUI(QMainWindow):
                         time.sleep(1)
                     for i in range(iter_val, 11):
                         print(f"开始第{i}次采集，种子等级{seed_level}")
-                        key_api.autoDigSeed(iter=i, seed_level=seed_level, gui=self)
+                        key_api.autoDigSeed(iter=i, seed_level=seed_level, gui=self, use_talk=use_talk)
                     print("采集种子任务已结束")
                 except Exception as e:
                     print(f"执行采集种子时出错: {e}")
@@ -526,9 +522,8 @@ class GameHelperGUI(QMainWindow):
         except Exception as e:
             print(f"错误: 启动采集种子任务失败: {str(e)}")
     
-    def setKey(self, select_key:str, attack_key:str, position_key:str, horse_key:str, pet_fight_key:str):
+    def setKey(self, list_key:list[str]):
         """设置按键"""
-        list_key = [select_key, attack_key, position_key, horse_key, pet_fight_key]
         key_api.initKey(list_key)
         
     def stopCurrentTask(self):
