@@ -2,6 +2,7 @@ import win32api
 import win32con
 import win32gui
 import time
+import random
 from typing import Union, List
 
 class KeyboardSimulator:
@@ -55,15 +56,11 @@ class KeyboardSimulator:
         key = key.upper()
         return self.kVirtualKeyCode.get(key, 0)
     
-    def pressKey(self, key: Union[str, int], hwnd: int = 0, mode: str = "async") -> bool:
+    def pressKey(self, key: Union[str, int], hwnd: int = 0) -> bool:
         """按下并释放一个键
         Args:
             key: 按键（字符串或虚拟键码）
             hwnd: 目标窗口句柄
-            mode: 发送模式
-                - "sync": 同步模式，使用SendMessage（默认，可靠）
-                - "async": 异步模式，使用PostMessage（快速，适合游戏后台）
-                - "global": 全局按键模式，使用keybd_event
         """
         try:
             # 获取虚拟键码
@@ -74,110 +71,30 @@ class KeyboardSimulator:
                     return False
             else:
                 vk_code = key
-                
-            # 根据模式发送按键
-            if mode == "sync":
-                return self._sendKeySync(key, vk_code, hwnd)
-            elif mode == "async":
-                return self._sendKeyAsync(key, vk_code, hwnd)
-            elif mode == "global":
-                return self._sendKeyGlobal(key, vk_code)
-            else:
-                print(f"未知模式: {mode}")
-                return False
-                
+            try:
+                win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+                time.sleep(random.uniform(0.05, 0.08))  # 异步模式延迟更短
+                win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+                return True
+            except Exception as e:
+                print(f"异步发送失败: {e}")
+                return False     
         except Exception as e:
             print(f"按键失败: {e}")
-            return False
-    
-    def _sendKeySync(self, key: Union[str, int], vk_code: int, hwnd: int) -> bool:
-        """同步发送按键（SendMessage）"""
-        try:
-            # 对于单个字母和数字字符，直接发送字符消息
-            if isinstance(key, str) and len(key) == 1 and key.isalnum():
-                char_code = ord(key.upper())
-                win32gui.SendMessage(hwnd, win32con.WM_CHAR, char_code, 0)
-            elif isinstance(key, str) and key.upper() == 'SPACE':
-                # 特殊处理空格
-                win32gui.SendMessage(hwnd, win32con.WM_CHAR, ord(' '), 0)
-            else:
-                # 对于特殊键（功能键等），发送完整的按键序列
-                win32gui.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-                time.sleep(0.01)
-                win32gui.SendMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
-            return True
-        except Exception as e:
-            print(f"同步发送失败: {e}")
-            return False
-    
-    def _sendKeyAsync(self, key: Union[str, int], vk_code: int, hwnd: int) -> bool:
-        """异步发送按键（PostMessage）"""
-        try:
-            # 对于单个字母和数字字符，直接发送字符消息
-            if isinstance(key, str) and len(key) == 1 and key.isalnum():
-                char_code = ord(key.upper())
-                win32api.PostMessage(hwnd, win32con.WM_CHAR, char_code, 0)
-            elif isinstance(key, str) and key.upper() == 'SPACE':
-                # 特殊处理空格
-                win32api.PostMessage(hwnd, win32con.WM_CHAR, ord(' '), 0)
-            else:
-                # 对于特殊键（功能键等），发送完整的按键序列
-                win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-                time.sleep(0.005)  # 异步模式延迟更短
-                win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
-            return True
-        except Exception as e:
-            print(f"异步发送失败: {e}")
-            return False
-    
-    def _sendKeyGlobal(self, key: Union[str, int], vk_code: int) -> bool:
-        """全局发送按键（keybd_event）"""
-        try:
-            win32api.keybd_event(vk_code, 0, 0, 0)  # 按下
-            time.sleep(0.02)
-            win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)  # 释放
-            return True
-        except Exception as e:
-            print(f"全局按键失败: {e}")
-            return False
-    
-    def pressKeys(self, keys: str, hwnd: int = 0, delay: float = 0.05, mode: str = "async") -> bool:
-        """发送一串按键
-        Args:
-            keys: 要发送的字符串
-            hwnd: 目标窗口句柄
-            delay: 按键间延迟（秒）
-            mode: 发送模式（sync/async/global）
-        """
-        try:
-            for char in keys:
-                if char == ' ':
-                    self.pressKey('SPACE', hwnd, mode)
-                elif char.isalnum():
-                    self.pressKey(char, hwnd, mode)
-                else:
-                    print(f"跳过特殊字符: {char}")
-                
-                if delay > 0:
-                    time.sleep(delay)
-            
-            return True
-        except Exception as e:
-            print(f"发送按键序列失败: {e}")
             return False
 
 # 使用示例
 if __name__ == "__main__":
     from window_manager import WindowManager
-    
-    print("=== 键盘模拟器测试 ===")
     window1 = WindowManager()
     hwnd1 = window1.selectWindow()
     if hwnd1 is None:
         print("未选择窗口")
         exit()
     ks = KeyboardSimulator()
-    ks.pressKeys('Hello World', hwnd1, delay=0.05, mode='global')
-    # ks.pressKeys('Hello World', hwnd1, delay=0.05, mode='async')
-    # ks.pressKeys('Hello World', hwnd1, delay=0.05, mode='sync')
+    key_list = ['Q', 'E']
+    while True:
+        for key in key_list:
+            ks.pressKey(key, hwnd1)
+            time.sleep(random.uniform(1, 1.5))
     
