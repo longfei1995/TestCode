@@ -15,7 +15,7 @@ class ColorDetector:
     def __init__(self):
         pass
     
-    def getPixelColorAtScreen(self, x: int, y: int) -> Tuple[int, int, int]:
+    def _getPixelColorAtScreen(self, x: int, y: int) -> Tuple[int, int, int]:
         """获取屏幕指定位置的像素颜色 (RGB)"""
         try:
             # 使用PIL截图方式
@@ -30,7 +30,7 @@ class ColorDetector:
             print(f"获取屏幕像素颜色失败: {e}")
             return (0, 0, 0)
     
-    def getPixelColorInWindow(self, hwnd: int, x: int, y: int) -> Tuple[int, int, int]:
+    def getPixelPosColorInWindow(self, hwnd: int, x: int, y: int) -> Tuple[int, int, int]:
         """获取窗口内指定位置的像素颜色 (相对于窗口左上角)"""
         try:
             # 获取窗口位置
@@ -41,7 +41,7 @@ class ColorDetector:
             screen_x = window_x + x
             screen_y = window_y + y
             
-            return self.getPixelColorAtScreen(screen_x, screen_y)
+            return self._getPixelColorAtScreen(screen_x, screen_y)
         except Exception as e:
             print(f"获取窗口像素颜色失败: {e}")
             return (0, 0, 0)
@@ -79,7 +79,6 @@ class ColorDetector:
         return (abs(r1 - r2) <= tolerance and 
                 abs(g1 - g2) <= tolerance and 
                 abs(b1 - b2) <= tolerance)
-    
     
     def rgb2Hex(self, rgb: Tuple[int, int, int]) -> str:
         """将RGB颜色转换为十六进制字符串"""
@@ -129,7 +128,7 @@ if __name__ == "__main__":
             
             if 0 <= x < window_width and 0 <= y < window_height:
                 # 检测指定位置的颜色
-                color = color_detect.getPixelColorInWindow(hwnd, x, y)
+                color = color_detect.getPixelPosColorInWindow(hwnd, x, y)
                 hex_color = color_detect.rgb2Hex(color)
                 print(f"\n位置 ({x}, {y}) 的颜色:")
                 print(f"  RGB: {color}")

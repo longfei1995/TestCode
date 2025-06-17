@@ -83,8 +83,122 @@ class KeyboardSimulator:
             print(f"按键失败: {e}")
             return False
 
+        def mouseClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
+        """鼠标点击 - 针对特定窗口的相对坐标点击
+        Args:
+            x: 相对于窗口客户区的X坐标
+            y: 相对于窗口客户区的Y坐标  
+            hwnd: 目标窗口句柄
+            button: 点击类型 ('left', 'right', 'middle')
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if hwnd == 0:
+                print("警告: 未指定目标窗口句柄")
+                return False
+            
+            # 将相对坐标转换为lParam格式 (MAKELONG)
+            lParam = win32api.MAKELONG(x, y)
+            
+            # 根据按钮类型选择消息
+            if button.lower() == 'left':
+                down_msg = win32con.WM_LBUTTONDOWN
+                up_msg = win32con.WM_LBUTTONUP
+                wParam = win32con.MK_LBUTTON
+            elif button.lower() == 'right':
+                down_msg = win32con.WM_RBUTTONDOWN
+                up_msg = win32con.WM_RBUTTONUP
+                wParam = win32con.MK_RBUTTON
+            elif button.lower() == 'middle':
+                down_msg = win32con.WM_MBUTTONDOWN
+                up_msg = win32con.WM_MBUTTONUP
+                wParam = win32con.MK_MBUTTON
+            else:
+                print(f"不支持的按钮类型: {button}")
+                return False
+            
+            # 发送鼠标按下消息
+            result1 = win32api.PostMessage(hwnd, down_msg, wParam, lParam)
+            if result1 == 0:
+                print("发送鼠标按下消息失败")
+                return False
+            
+            # 短暂延迟模拟真实点击
+            time.sleep(random.uniform(0.01, 0.03))
+            
+            # 发送鼠标释放消息
+            result2 = win32api.PostMessage(hwnd, up_msg, 0, lParam)
+            if result2 == 0:
+                print("发送鼠标释放消息失败")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"鼠标点击失败: {e}")
+            return False
+    
+    def mouseClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
+        """鼠标点击 - 针对特定窗口的相对坐标点击
+        Args:
+            x: 相对于窗口客户区的X坐标
+            y: 相对于窗口客户区的Y坐标  
+            hwnd: 目标窗口句柄
+            button: 点击类型 ('left', 'right', 'middle')
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if hwnd == 0:
+                print("警告: 未指定目标窗口句柄")
+                return False
+            
+            # 将相对坐标转换为lParam格式 (MAKELONG)
+            lParam = win32api.MAKELONG(x, y)
+            
+            # 根据按钮类型选择消息
+            if button.lower() == 'left':
+                down_msg = win32con.WM_LBUTTONDOWN
+                up_msg = win32con.WM_LBUTTONUP
+                wParam = win32con.MK_LBUTTON
+            elif button.lower() == 'right':
+                down_msg = win32con.WM_RBUTTONDOWN
+                up_msg = win32con.WM_RBUTTONUP
+                wParam = win32con.MK_RBUTTON
+            elif button.lower() == 'middle':
+                down_msg = win32con.WM_MBUTTONDOWN
+                up_msg = win32con.WM_MBUTTONUP
+                wParam = win32con.MK_MBUTTON
+            else:
+                print(f"不支持的按钮类型: {button}")
+                return False
+            
+            # 发送鼠标按下消息
+            result1 = win32api.PostMessage(hwnd, down_msg, wParam, lParam)
+            if result1 == 0:
+                print("发送鼠标按下消息失败")
+                return False
+            
+            # 短暂延迟模拟真实点击
+            time.sleep(random.uniform(0.01, 0.03))
+            
+            # 发送鼠标释放消息
+            result2 = win32api.PostMessage(hwnd, up_msg, 0, lParam)
+            if result2 == 0:
+                print("发送鼠标释放消息失败")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"鼠标点击失败: {e}")
+            return False
+            
+
 # 使用示例
 if __name__ == "__main__":
+    # todo 测试按键
     from window_manager import WindowManager
     window1 = WindowManager()
     hwnd1 = window1.selectWindow()
