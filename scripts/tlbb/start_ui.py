@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
 
-from game_param import kHPBar, kMPBar
+from game_param import kHPBar, kMPBar, kDefaultKey
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
@@ -85,17 +85,16 @@ class RaidThread(QThread):
                     print("收到停止信号，退出按键循环")
                     return
                 keyboard_simulator.pressKey(key, hwnd)
-                
                 # 按键间隔等待
                 if i < len(keys) - 1:  # 最后一个按键后不需要等待间隔
                     import time
                     time.sleep(self.key_interval)
             
             # 2. 执行默认按键
-            if self.is_em:
-                # 查看自己是不是空血, todo
-                blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
-                if color_detector.isEmpty(blood_color_p1):
+            # if self.is_em:
+            #     # 查看自己是不是空血, todo
+            #     blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
+            #     if color_detector.isEmpty(blood_color_p1):
                     # keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
             
             
@@ -168,32 +167,30 @@ class GameUI(QMainWindow):
         window_group = QGroupBox("选择游戏窗口")
         window_layout = QVBoxLayout(window_group)
         
-        # 第一行：展示所有窗口按钮
-        show_layout = QHBoxLayout()
+        # layout_1
+        layout_1 = QHBoxLayout()
         show_btn = QPushButton("刷新窗口列表")
         show_btn.clicked.connect(self.showAllWindows)
-        show_layout.addWidget(show_btn)
-        show_layout.addStretch()  # 添加弹性空间
-        window_layout.addLayout(show_layout)
+        layout_1.addWidget(show_btn)
         
-        # 第二行：窗口选择下拉框和激活按钮
-        select_layout = QHBoxLayout()
-        select_layout.addWidget(QLabel("选择窗口:"))
+        # layout_2：窗口选择下拉框和激活按钮
+        layout_2 = QHBoxLayout()
+        layout_2.addWidget(QLabel("选择窗口:"))
         
         self.window_combobox = QComboBox()
         self.window_combobox.addItem("请先刷新窗口列表", -1)  # 默认项
         self.window_combobox.setMinimumWidth(300)  # 设置最小宽度以显示完整标题
-        select_layout.addWidget(self.window_combobox)
+        layout_2.addWidget(self.window_combobox)
         
         # 激活窗口按钮
         self.activate_btn = QPushButton("激活选中窗口")
         self.activate_btn.clicked.connect(self.activateWindow)
         self.activate_btn.setEnabled(False)  # 初始状态禁用
-        select_layout.addWidget(self.activate_btn)
-        
-        window_layout.addLayout(select_layout)
+        layout_2.addWidget(self.activate_btn)
         
         # 当前窗口状态显示
+        window_layout.addLayout(layout_1)
+        window_layout.addLayout(layout_2)
         self.window_status_label = QLabel("当前窗口: 未选择")
         self.window_status_label.setStyleSheet("color: gray;")
         window_layout.addWidget(self.window_status_label)
