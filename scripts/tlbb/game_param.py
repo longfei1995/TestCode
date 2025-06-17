@@ -1,25 +1,34 @@
 from typing import Dict, Tuple
 from dataclasses import dataclass
 
-@dataclass
+@dataclass(frozen=True)
 class Point:
     x: int
     y: int
 
 @dataclass
 class HPBarConfig:
-    player1: Point = Point(100, 100)  # 玩家1血条，在血条3/4的位置
-    player2: Point = Point(200, 200)  # 玩家2血条，在血条3/4的位置
-    player3: Point = Point(300, 300)  # 玩家3血条，在血条3/4的位置
-    player4: Point = Point(400, 400)  # 玩家4血条，在血条3/4的位置
-    player5: Point = Point(500, 500)  # 玩家5血条，在血条3/4的位置
-    player6: Point = Point(600, 600)  # 玩家6血条，在血条3/4的位置
-    pet: Point = Point(700, 700)      # 宠物血条，在血条3/4的位置
+    # 血条设置在4/5的位置
+    player1: Point = Point(200, 66)
+    player2: Point = Point(140, 160)
+    player3: Point = Point(140, 205)
+    player4: Point = Point(140, 250)
+    player5: Point = Point(140, 295)
+    player6: Point = Point(140, 340)
+    pet: Point = Point(217, 109)
 
 @dataclass
 class MPBarConfig:
-    player1: Point = Point(100, 100)  # 玩家1魔法条，在魔法条3/4的位置
+    player1: Point = Point(167, 73)
 
+@dataclass
+class PhotoConfig:
+    player1: Point = Point(40, 66)
+    player2: Point = Point(24, 160)
+    player3: Point = Point(24, 205)
+    player4: Point = Point(24, 250)
+    player5: Point = Point(24, 295)
+    player6: Point = Point(24, 340)
 
 @dataclass
 class DefaultKeyConfig:
@@ -32,3 +41,4 @@ class DefaultKeyConfig:
 kHPBar = HPBarConfig()
 kMPBar = MPBarConfig()
 kDefaultKey = DefaultKeyConfig()
+kProfilePhoto = PhotoConfig()

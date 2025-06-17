@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
 
-from game_param import kHPBar, kMPBar, kDefaultKey
+from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
@@ -91,13 +91,57 @@ class RaidThread(QThread):
                     time.sleep(self.key_interval)
             
             # 2. 执行默认按键
-            # if self.is_em:
-            #     # 查看自己是不是空血, todo
-            #     blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
-            #     if color_detector.isEmpty(blood_color_p1):
-                    # keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
-            
-            
+            # 2.0 召唤宠物
+            keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
+            keyboard_simulator.pressKey(kDefaultKey.pet_eat, hwnd)
+            if self.is_em:
+                # 查看自己是不是空血
+                blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
+                if color_detector.isEmpty(blood_color_p1):
+                    print("自己空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player1.x, kProfilePhoto.player1.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                # 查看自己是不是空蓝
+                mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
+                if color_detector.isEmpty(mp_color_p1):
+                    print("自己空蓝，点击血迹")
+                    keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
+                # 查看p2是不是空血
+                blood_color_p2 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player2.x, kHPBar.player2.y)
+                if color_detector.isEmpty(blood_color_p2):
+                    print("p2空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player2.x, kProfilePhoto.player2.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                # 查看p3是不是空血
+                blood_color_p3 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player3.x, kHPBar.player3.y)
+                if color_detector.isEmpty(blood_color_p3):
+                    print("p3空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player3.x, kProfilePhoto.player3.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                # 查看p4是不是空血
+                blood_color_p4 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player4.x, kHPBar.player4.y)
+                if color_detector.isEmpty(blood_color_p4):
+                    print("p4空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player4.x, kProfilePhoto.player4.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                # 查看p5是不是空血
+                blood_color_p5 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player5.x, kHPBar.player5.y)
+                if color_detector.isEmpty(blood_color_p5):
+                    print("p5空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player5.x, kProfilePhoto.player5.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                # 查看p6是不是空血
+                blood_color_p6 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player6.x, kHPBar.player6.y)
+                if color_detector.isEmpty(blood_color_p6):
+                    print("p6空血，点击清心")
+                    keyboard_simulator.mouseClick(kProfilePhoto.player6.x, kProfilePhoto.player6.y, hwnd)
+                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+            else:
+                # 不是峨眉
+                # 查看自己是否空蓝
+                mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
+                if color_detector.isEmpty(mp_color_p1):
+                    keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
             
             # 3. 休眠时间（可以被打断）&& 结束
             print(f"第 {cycle_count} 轮按键完成，开始休眠 {self.sleep_time} 秒...")

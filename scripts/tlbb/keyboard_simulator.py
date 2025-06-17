@@ -84,10 +84,10 @@ class KeyboardSimulator:
             return False
     
     def mouseClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
-        """鼠标点击 - 针对特定窗口的相对坐标点击
+        """全局鼠标点击 - 使用SetCursorPos和mouse_event模拟真实鼠标
         Args:
-            x: 相对于窗口客户区的X坐标
-            y: 相对于窗口客户区的Y坐标  
+            x: 相对于窗口的X坐标
+            y: 相对于窗口的Y坐标  
             hwnd: 目标窗口句柄
             button: 点击类型 ('left', 'right', 'middle')
         Returns:
@@ -95,64 +95,75 @@ class KeyboardSimulator:
         """
         try:
             if hwnd == 0:
-                print("警告: 未指定目标窗口句柄")
                 return False
             
-            # 将相对坐标转换为lParam格式 (MAKELONG)
-            lParam = win32api.MAKELONG(x, y)
+            # 获取窗口矩形
+            window_rect = win32gui.GetWindowRect(hwnd)
+            print(f"窗口矩形: {window_rect}")
+            # 获取原点坐标
+            window_x, window_y = window_rect[0], window_rect[1]
             
-            # 根据按钮类型选择消息
+            # 计算目标屏幕坐标
+            target_screen_x = window_x + x
+            target_screen_y = window_y + y
+            
+            # 保存当前鼠标位置
+            current_pos = win32gui.GetCursorPos()
+            
+            # 移动鼠标到目标位置（使用手动计算的坐标）
+            win32api.SetCursorPos((target_screen_x, target_screen_y))
+            time.sleep(random.uniform(0.1, 0.5))
+            
+            # 根据按钮类型选择mouse_event标志
             if button.lower() == 'left':
-                down_msg = win32con.WM_LBUTTONDOWN
-                up_msg = win32con.WM_LBUTTONUP
-                wParam = win32con.MK_LBUTTON
+                down_flag = win32con.MOUSEEVENTF_LEFTDOWN
+                up_flag = win32con.MOUSEEVENTF_LEFTUP
             elif button.lower() == 'right':
-                down_msg = win32con.WM_RBUTTONDOWN
-                up_msg = win32con.WM_RBUTTONUP
-                wParam = win32con.MK_RBUTTON
+                down_flag = win32con.MOUSEEVENTF_RIGHTDOWN
+                up_flag = win32con.MOUSEEVENTF_RIGHTUP
             elif button.lower() == 'middle':
-                down_msg = win32con.WM_MBUTTONDOWN
-                up_msg = win32con.WM_MBUTTONUP
-                wParam = win32con.MK_MBUTTON
+                down_flag = win32con.MOUSEEVENTF_MIDDLEDOWN
+                up_flag = win32con.MOUSEEVENTF_MIDDLEUP
             else:
-                print(f"不支持的按钮类型: {button}")
                 return False
             
-            # 发送鼠标按下消息
-            result1 = win32api.PostMessage(hwnd, down_msg, wParam, lParam)
-            if result1 == 0:
-                print("发送鼠标按下消息失败")
-                return False
+            # 执行鼠标点击
+            win32api.mouse_event(down_flag, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.05, 0.1))  # 减少点击间隔
+            win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
-            # 短暂延迟模拟真实点击
-            time.sleep(random.uniform(0.01, 0.03))
-            
-            # 发送鼠标释放消息
-            result2 = win32api.PostMessage(hwnd, up_msg, 0, lParam)
-            if result2 == 0:
-                print("发送鼠标释放消息失败")
-                return False
+            # 恢复鼠标位置
+            time.sleep(random.uniform(0.1, 0.2))  # 减少恢复延迟
+            win32api.SetCursorPos(current_pos)
             
             return True
             
         except Exception as e:
-            print(f"鼠标点击失败: {e}")
             return False
-            
 
 # 使用示例
 if __name__ == "__main__":
-    # todo 测试按键
+    # 测试全局鼠标点击方法
     from window_manager import WindowManager
     window1 = WindowManager()
     hwnd1 = window1.selectWindow()
     if hwnd1 is None:
         print("未选择窗口")
         exit()
+    # 打印窗口的size
+    print(f"窗口的size: {window1.getWindowRect(hwnd1)}")
     ks = KeyboardSimulator()
-    key_list = ['Q', 'E']
-    while True:
-        for key in key_list:
-            ks.pressKey(key, hwnd1)
-            time.sleep(random.uniform(1, 1.5))
+    test_x, test_y = 50, 50
     
+    print("测试全局鼠标点击方法...")
+    print("=" * 50)
+    
+    while True:
+        print("执行鼠标点击测试...")
+        if ks.mouseClick(test_x, test_y, hwnd1, 'left'):
+            print("   ✓ 鼠标点击成功")
+        else:
+            print("   ✗ 鼠标点击失败")
+        
+        print("=" * 50)
+        time.sleep(2)
