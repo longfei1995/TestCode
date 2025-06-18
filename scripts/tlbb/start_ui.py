@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
+import os
 
 from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto
 from window_manager import WindowManager
@@ -185,8 +186,13 @@ class GameUI(QMainWindow):
         sys.stdout = UILogStream(self.add_log)
     
     def initUI(self):
-        self.setWindowTitle('tlbb auto raid tool')
+        self.setWindowTitle('author: douzi version: 250618')
         self.setGeometry(100, 100, 500, 800)
+        
+        # 设置窗口图标（如果图标文件存在）
+        icon_path = self.getIconPath()
+        if icon_path and os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
         
         # 创建中央窗口部件
         central_widget = QWidget()
@@ -479,6 +485,23 @@ class GameUI(QMainWindow):
         msg.setDefaultButton(QMessageBox.Ok)
         msg.resize(500, 400)  # 设置对话框大小
         msg.exec_()
+    
+    def getIconPath(self):
+        """获取图标文件路径，兼容开发环境和打包后的环境"""
+        import sys
+        import os
+        
+        # 判断是否是打包后的环境
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # 打包后的环境，图标文件在_MEIPASS目录下
+            base_path = getattr(sys, '_MEIPASS')
+            icon_path = os.path.join(base_path, 'icon.ico')
+        else:
+            # 开发环境，图标文件在脚本同目录下
+            base_path = os.path.dirname(__file__)
+            icon_path = os.path.join(base_path, 'icon.ico')
+        
+        return icon_path
 
 
 def main():

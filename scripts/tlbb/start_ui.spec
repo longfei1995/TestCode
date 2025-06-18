@@ -7,8 +7,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        # 包含pics目录（如果存在图片资源）
-        ('pics', 'pics'),
+        # 包含图标文件到根目录
+        ('icon.ico', '.'),
     ],
     hiddenimports=[
         # PyQt5相关模块
@@ -65,7 +65,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='tlbb_auto_raid_tool',
+    name='tlbb_assistant',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -79,5 +79,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     # 添加图标（如果有的话）
-    # icon='icon.ico',
+    icon='icon.ico',
 ) 
