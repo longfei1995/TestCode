@@ -1,0 +1,115 @@
+/* 全局字体设置 */
+* {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+}
+
+QMainWindow {
+    background-color: #f0f0f0;
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+}
+
+/* 标题字体 */
+QGroupBox {
+    font-family: "Consolas", monospace;
+    font-weight: bold;
+    font-size: 11pt;
+    border: 2px solid #cccccc;
+    border-radius: 5px;
+    margin-top: 1ex;
+    padding-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    font-size: 11pt;
+    font-weight: bold;
+    color: #333333;
+}
+
+/* 标签字体 */
+QLabel {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    color: #333333;
+}
+
+/* 按钮字体 */
+QPushButton {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    font-weight: normal;
+    border: 2px solid #8f8f91;
+    border-radius: 6px;
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #f6f7fa, stop: 1 #dadbde);
+    min-width: 80px;
+    min-height: 30px;
+    color: #333333;
+}
+
+QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
+}
+
+QPushButton:hover {
+    border: 2px solid #5f9ea0;
+}
+
+/* 输入框字体 */
+QLineEdit {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+QLineEdit:focus {
+    border: 2px solid #5f9ea0;
+}
+
+/* 下拉框字体 */
+QComboBox {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+/* 数字输入框字体 */
+QSpinBox, QDoubleSpinBox {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+/* 复选框字体 */
+QCheckBox {
+    font-family: "Consolas", monospace;
+    font-size: 10pt;
+    color: #333333;
+}
+
+/* 文本框字体 */
+QTextEdit {
+    font-family: "Consolas", monospace;
+    font-size: 9pt;
+    line-height: 1.2;
+}
+
+/* 工具提示字体 */
+QToolTip {
+    font-family: "Consolas", monospace;
+    font-size: 9pt;
+    background-color: #ffffcc;
+    border: 1px solid #999999;
+    padding: 3px;
+}

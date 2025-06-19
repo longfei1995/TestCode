@@ -10,8 +10,8 @@ temp/
 debug/
 log/
 dist/
+__pycache__/
 
 # file
 *.pdf
 *.csv
-scripts/__pycache__/key_api.cpython-39.pyc

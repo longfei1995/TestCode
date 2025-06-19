@@ -86,33 +86,27 @@ class KeyboardSimulator:
     def mouseClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
         """全局鼠标点击 - 使用SetCursorPos和mouse_event模拟真实鼠标
         Args:
-            x: 相对于窗口的X坐标
-            y: 相对于窗口的Y坐标  
+            x: 相对于窗口原点的X坐标
+            y: 相对于窗口原点的Y坐标  
             hwnd: 目标窗口句柄
             button: 点击类型 ('left', 'right', 'middle')
         Returns:
             bool: 是否成功
         """
         try:
-            if hwnd == 0:
+            if hwnd <= 0:
                 return False
             
-            # 获取窗口矩形
-            window_rect = win32gui.GetWindowRect(hwnd)
-            print(f"窗口矩形: {window_rect}")
-            # 获取原点坐标
-            window_x, window_y = window_rect[0], window_rect[1]
+            # 获取窗口矩形 && 获取原点坐标 && 获取当前鼠标位置
+            window_rect = win32gui.GetWindowRect(hwnd) # 返回窗口矩形左上角坐标和右下角坐标（像素）
+            window_origin_x, window_origin_y = window_rect[0], window_rect[1]
             
-            # 计算目标屏幕坐标
-            target_screen_x = window_x + x
-            target_screen_y = window_y + y
+            # 计算目标位置在屏幕坐标系中的坐标
+            target_screen_x = window_origin_x + x
+            target_screen_y = window_origin_y + y
             
-            # 保存当前鼠标位置
-            current_pos = win32gui.GetCursorPos()
-            
-            # 移动鼠标到目标位置（使用手动计算的坐标）
+            # 移动鼠标到目标位置（瞬间完成）
             win32api.SetCursorPos((target_screen_x, target_screen_y))
-            time.sleep(random.uniform(0.1, 0.5))
             
             # 根据按钮类型选择mouse_event标志
             if button.lower() == 'left':
@@ -129,12 +123,8 @@ class KeyboardSimulator:
             
             # 执行鼠标点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.05, 0.1))  # 减少点击间隔
+            time.sleep(random.uniform(0.03, 0.08))  # 减少点击间隔
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
-            
-            # 恢复鼠标位置
-            time.sleep(random.uniform(0.1, 0.2))  # 减少恢复延迟
-            win32api.SetCursorPos(current_pos)
             
             return True
             

@@ -52,7 +52,7 @@ class RaidThread(QThread):
             self.original_stdout = sys.stdout
             sys.stdout = UILogStream(self.log_signal.emit)
             
-            # 开始自动团本
+            # 开始自动按键的主要逻辑
             self.autoKeyPress(self.hwnd)
         except Exception as e:
             self.log_signal.emit(f"错误：{str(e)}")
@@ -64,7 +64,6 @@ class RaidThread(QThread):
             
     def autoKeyPress(self, hwnd: int):
         """自动按键的主要逻辑"""
-        window_manager = WindowManager()
         color_detector = ColorDetector()
         keyboard_simulator = KeyboardSimulator()
         
@@ -78,6 +77,9 @@ class RaidThread(QThread):
         cycle_count = 0
         while self.running:
             cycle_count += 1
+            if cycle_count > 1e5:
+                print("按键循环超过10w次，重置循环")
+                cycle_count = 0
             print(f"=== 第 {cycle_count} 轮按键开始 ===")
             
             # 1. 执行设置的按键序列
@@ -93,15 +95,19 @@ class RaidThread(QThread):
             
             # 2. 执行默认按键
             # 2.0 召唤宠物
-            keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
+            if cycle_count % 20 == 0:
+                keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
             keyboard_simulator.pressKey(kDefaultKey.pet_eat, hwnd)
+            # 2.1 峨眉
             if self.is_em:
+                qin_xin_sleep_time = 0.5
                 # 查看自己是不是空血
                 blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
                 if color_detector.isEmpty(blood_color_p1):
                     print("自己空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player1.x, kProfilePhoto.player1.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
                 # 查看自己是不是空蓝
                 mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
                 if color_detector.isEmpty(mp_color_p1):
@@ -113,30 +119,35 @@ class RaidThread(QThread):
                     print("p2空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player2.x, kProfilePhoto.player2.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
                 # 查看p3是不是空血
                 blood_color_p3 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player3.x, kHPBar.player3.y)
                 if color_detector.isEmpty(blood_color_p3):
                     print("p3空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player3.x, kProfilePhoto.player3.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
                 # 查看p4是不是空血
                 blood_color_p4 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player4.x, kHPBar.player4.y)
                 if color_detector.isEmpty(blood_color_p4):
                     print("p4空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player4.x, kProfilePhoto.player4.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
                 # 查看p5是不是空血
                 blood_color_p5 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player5.x, kHPBar.player5.y)
                 if color_detector.isEmpty(blood_color_p5):
                     print("p5空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player5.x, kProfilePhoto.player5.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
                 # 查看p6是不是空血
                 blood_color_p6 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player6.x, kHPBar.player6.y)
                 if color_detector.isEmpty(blood_color_p6):
                     print("p6空血，点击清心")
                     keyboard_simulator.mouseClick(kProfilePhoto.player6.x, kProfilePhoto.player6.y, hwnd)
                     keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                    time.sleep(qin_xin_sleep_time)
             else:
                 # 不是峨眉
                 # 查看自己是否空蓝
@@ -144,11 +155,9 @@ class RaidThread(QThread):
                 if color_detector.isEmpty(mp_color_p1):
                     keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
             
-            # 3. 休眠时间（可以被打断）&& 结束
+            # 3. 休眠时间
             print(f"第 {cycle_count} 轮按键完成，开始休眠 {self.sleep_time} 秒...")
-            sleep_start = __import__('time').time()
-            while self.running and (__import__('time').time() - sleep_start) < self.sleep_time:
-                __import__('time').sleep(0.1)  # 每0.1秒检查一次停止信号
+            time.sleep(self.sleep_time)
             
             if not self.running:
                 print("**************休眠期间收到停止信号，脚本退出**************")
@@ -186,8 +195,8 @@ class GameUI(QMainWindow):
         sys.stdout = UILogStream(self.add_log)
     
     def initUI(self):
-        self.setWindowTitle('author: douzi version: 250618')
-        self.setGeometry(100, 100, 500, 800)
+        self.setWindowTitle('豆子-版本: 250619')
+        self.setGeometry(100, 100, 500, 500)
         
         # 设置窗口图标（如果图标文件存在）
         icon_path = self.getIconPath()
@@ -257,7 +266,7 @@ class GameUI(QMainWindow):
         
         # 按键序列输入
         self.key_sequence_input = QLineEdit()
-        self.key_sequence_input.setText("F1 F2")  # 默认值
+        self.key_sequence_input.setText("Q E")  # 默认值
         key_layout.addWidget(self.key_sequence_input)
         
         # 按键序列帮助图标
@@ -350,7 +359,7 @@ class GameUI(QMainWindow):
         for i, (hwnd, title) in enumerate(self.window_list):
             # 限制标题长度，避免下拉框过宽
             display_title = title[:50] + "..." if len(title) > 50 else title
-            display_text = f"[{i+1}] {display_title}"
+            display_text = f"[{i+1}] [{hwnd}] {display_title}"
             self.window_combobox.addItem(display_text, hwnd)  # hwnd作为数据存储
         
         # 启用激活按钮
@@ -407,10 +416,6 @@ class GameUI(QMainWindow):
         
         # 显示启动信息
         print(f"***************** 脚本开始启动 *****************")
-        print(f"相关设置 - 按键序列: {key_sequence}")
-        print(f"相关设置 - 按键间隔: {key_interval}秒")
-        print(f"相关设置 - 休眠时间: {sleep_time}秒")
-        print(f"相关设置 - 峨眉模式: {'启用' if is_em else '禁用'}")
         
         # 创建线程时传递参数
         self.raid_thread = RaidThread(hwnd, self.add_log, key_interval, sleep_time, is_em, key_sequence)
@@ -504,39 +509,36 @@ class GameUI(QMainWindow):
         return icon_path
 
 
+# 自定义样式
+def load_stylesheet():
+    """加载样式表文件"""
+    try:
+        # 获取样式文件路径
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # 打包后的环境
+            style_path = os.path.join(getattr(sys, '_MEIPASS'), 'styles.qss')
+        else:
+            # 开发环境
+            style_path = os.path.join(os.path.dirname(__file__), 'styles.qss')
+        
+        # 读取样式文件
+        if os.path.exists(style_path):
+            with open(style_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        else:
+            print(f"样式文件不存在: {style_path}")
+            return ""
+    except Exception as e:
+        print(f"加载样式文件失败: {e}")
+        return ""
+
 def main():
-    app = QApplication(sys.argv)
-    
-    # 设置应用样式
-    app.setStyleSheet("""
-        QMainWindow {
-            background-color: #f0f0f0;
-        }
-        QGroupBox {
-            font-weight: bold;
-            border: 2px solid #cccccc;
-            border-radius: 5px;
-            margin-top: 1ex;
-            padding-top: 10px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px 0 5px;
-        }
-        QPushButton {
-            border: 2px solid #8f8f91;
-            border-radius: 6px;
-            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                              stop: 0 #f6f7fa, stop: 1 #dadbde);
-            min-width: 80px;
-            min-height: 30px;
-        }
-        QPushButton:pressed {
-            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                              stop: 0 #dadbde, stop: 1 #f6f7fa);
-        }
-    """)
+    app = QApplication(sys.argv)    
+    # 应用样式
+    stylesheet = load_stylesheet()
+    if stylesheet:
+        app.setStyleSheet(stylesheet)
+        print("样式文件加载成功")
     
     window = GameUI()
     window.show()
