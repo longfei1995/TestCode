@@ -73,12 +73,19 @@ class ColorDetector:
     
     def isEmpty(self, color: Tuple[int, int, int]) -> bool:
         """检查血条或者蓝条是否为空"""
-        r1, g1, b1 = 23, 23, 23
+        r1, g1, b1 = 20, 20, 20
         r2, g2, b2 = color
-        tolerance = 10
+        tolerance = 15
         return (abs(r1 - r2) <= tolerance and 
                 abs(g1 - g2) <= tolerance and 
                 abs(b1 - b2) <= tolerance)
+    
+    def isRed(self, color: Tuple[int, int, int]) -> bool:
+        """检查颜色是否为红色"""
+        r1, g1, b1 = 255, 0, 0
+        r2, g2, b2 = color
+        tolerance = 15
+        return abs(r1 - r2) <= tolerance
     
     def rgb2Hex(self, rgb: Tuple[int, int, int]) -> str:
         """将RGB颜色转换为十六进制字符串"""
@@ -135,7 +142,7 @@ if __name__ == "__main__":
                 print(f"  HEX: {hex_color}")
                 
                 # 自动截图保存
-                image = color_detect.captureWindow(hwnd, x, y, 115, 12)
+                image = color_detect.captureWindow(hwnd, x, y, 200, 200)
             else:
                 print("坐标超出窗口范围")
                 

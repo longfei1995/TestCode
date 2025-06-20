@@ -64,6 +64,7 @@ class RaidThread(QThread):
             
     def autoKeyPress(self, hwnd: int):
         """自动按键的主要逻辑"""
+        import time  # 将time导入移到函数开头
         color_detector = ColorDetector()
         keyboard_simulator = KeyboardSimulator()
         
@@ -90,7 +91,6 @@ class RaidThread(QThread):
                 keyboard_simulator.pressKey(key, hwnd)
                 # 按键间隔等待
                 if i < len(keys) - 1:  # 最后一个按键后不需要等待间隔
-                    import time
                     time.sleep(self.key_interval)
             
             # 2. 执行默认按键
@@ -98,62 +98,139 @@ class RaidThread(QThread):
             if cycle_count % 20 == 0:
                 keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
             keyboard_simulator.pressKey(kDefaultKey.pet_eat, hwnd)
+            
+            # 2.1 如果自己空蓝，点击血迹
+            mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
+            if color_detector.isEmpty(mp_color_p1):
+                keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
+            
             # 2.1 峨眉
             if self.is_em:
-                qin_xin_sleep_time = 0.5
-                # 查看自己是不是空血
-                blood_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player1.x, kHPBar.player1.y)
-                if color_detector.isEmpty(blood_color_p1):
-                    print("自己空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player1.x, kProfilePhoto.player1.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-                # 查看自己是不是空蓝
-                mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
-                if color_detector.isEmpty(mp_color_p1):
-                    print("自己空蓝，点击血迹")
-                    keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
-                # 查看p2是不是空血
-                blood_color_p2 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player2.x, kHPBar.player2.y)
-                if color_detector.isEmpty(blood_color_p2):
-                    print("p2空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player2.x, kProfilePhoto.player2.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-                # 查看p3是不是空血
-                blood_color_p3 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player3.x, kHPBar.player3.y)
-                if color_detector.isEmpty(blood_color_p3):
-                    print("p3空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player3.x, kProfilePhoto.player3.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-                # 查看p4是不是空血
-                blood_color_p4 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player4.x, kHPBar.player4.y)
-                if color_detector.isEmpty(blood_color_p4):
-                    print("p4空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player4.x, kProfilePhoto.player4.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-                # 查看p5是不是空血
-                blood_color_p5 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player5.x, kHPBar.player5.y)
-                if color_detector.isEmpty(blood_color_p5):
-                    print("p5空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player5.x, kProfilePhoto.player5.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-                # 查看p6是不是空血
-                blood_color_p6 = color_detector.getPixelPosColorInWindow(hwnd, kHPBar.player6.x, kHPBar.player6.y)
-                if color_detector.isEmpty(blood_color_p6):
-                    print("p6空血，点击清心")
-                    keyboard_simulator.mouseClick(kProfilePhoto.player6.x, kProfilePhoto.player6.y, hwnd)
-                    keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
-                    time.sleep(qin_xin_sleep_time)
-            else:
-                # 不是峨眉
-                # 查看自己是否空蓝
-                mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
-                if color_detector.isEmpty(mp_color_p1):
-                    keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
+                # p1相关条件
+                is_p1_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p1_low.x, kHPBar.p1_low.y))
+                is_p1_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p1_mid.x, kHPBar.p1_mid.y))
+                is_p1_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p1_high.x, kHPBar.p1_high.y))
+                
+                # p2相关条件
+                is_p2_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p2_low.x, kHPBar.p2_low.y))
+                is_p2_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p2_mid.x, kHPBar.p2_mid.y))
+                is_p2_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p2_high.x, kHPBar.p2_high.y))
+                
+                # p3相关条件
+                is_p3_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p3_low.x, kHPBar.p3_low.y))
+                is_p3_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p3_mid.x, kHPBar.p3_mid.y))
+                is_p3_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p3_high.x, kHPBar.p3_high.y))
+                
+                # p4相关条件
+                is_p4_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p4_low.x, kHPBar.p4_low.y))
+                is_p4_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p4_mid.x, kHPBar.p4_mid.y))
+                is_p4_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p4_high.x, kHPBar.p4_high.y))
+                
+                # p5相关条件
+                is_p5_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p5_low.x, kHPBar.p5_low.y))
+                is_p5_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p5_mid.x, kHPBar.p5_mid.y))
+                is_p5_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p5_high.x, kHPBar.p5_high.y))
+                
+                # p6相关条件
+                is_p6_alive = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p6_low.x, kHPBar.p6_low.y))
+                is_p6_mid_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p6_mid.x, kHPBar.p6_mid.y))
+                is_p6_high_hp = color_detector.isRed(color_detector.getPixelPosColorInWindow(hwnd, kHPBar.p6_high.x, kHPBar.p6_high.y))
+                
+                # 峨眉治疗逻辑：两级优先级治疗系统
+                healed = False  # 标记是否已经治疗了某个队友
+                
+                # 第一优先级：紧急治疗 - 检查血量不足中等水平的队友
+                if not healed:
+                    # 检查p1
+                    if is_p1_alive and not is_p1_mid_hp:
+                        print("p1血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player1.x, kProfilePhoto.player1.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p2
+                    elif is_p2_alive and not is_p2_mid_hp:
+                        print("p2血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player2.x, kProfilePhoto.player2.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p3
+                    elif is_p3_alive and not is_p3_mid_hp:
+                        print("p3血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player3.x, kProfilePhoto.player3.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p4
+                    elif is_p4_alive and not is_p4_mid_hp:
+                        print("p4血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player4.x, kProfilePhoto.player4.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p5
+                    elif is_p5_alive and not is_p5_mid_hp:
+                        print("p5血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player5.x, kProfilePhoto.player5.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p6
+                    elif is_p6_alive and not is_p6_mid_hp:
+                        print("p6血量不足中等水平，紧急治疗")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player6.x, kProfilePhoto.player6.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                
+                # 第二优先级：预防性治疗 - 当所有人都有中等血量时，提升到高血量
+                if not healed:
+                    # 检查p1
+                    if is_p1_alive and is_p1_mid_hp and not is_p1_high_hp:
+                        print("p1血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player1.x, kProfilePhoto.player1.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p2
+                    elif is_p2_alive and is_p2_mid_hp and not is_p2_high_hp:
+                        print("p2血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player2.x, kProfilePhoto.player2.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p3
+                    elif is_p3_alive and is_p3_mid_hp and not is_p3_high_hp:
+                        print("p3血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player3.x, kProfilePhoto.player3.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p4
+                    elif is_p4_alive and is_p4_mid_hp and not is_p4_high_hp:
+                        print("p4血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player4.x, kProfilePhoto.player4.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p5
+                    elif is_p5_alive and is_p5_mid_hp and not is_p5_high_hp:
+                        print("p5血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player5.x, kProfilePhoto.player5.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                    
+                    # 检查p6
+                    elif is_p6_alive and is_p6_mid_hp and not is_p6_high_hp:
+                        print("p6血量中等，预防性加血到高血量")
+                        keyboard_simulator.mouseClick(kProfilePhoto.player6.x, kProfilePhoto.player6.y, hwnd)
+                        keyboard_simulator.pressKey(kDefaultKey.qing_xin, hwnd)
+                        healed = True
+                
+                # 如果没有人需要治疗，输出日志
+                if not healed:
+                    print("所有队友血量充足，无需治疗")
+                time.sleep(0.8) # 清心普善咒是有CD的
             
             # 3. 休眠时间
             print(f"第 {cycle_count} 轮按键完成，开始休眠 {self.sleep_time} 秒...")

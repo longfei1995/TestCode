@@ -9,6 +9,8 @@ a = Analysis(
     datas=[
         # 包含图标文件到根目录
         ('icon.ico', '.'),
+        # 包含样式文件到根目录
+        ('styles.qss', '.'),
     ],
     hiddenimports=[
         # PyQt5相关模块
