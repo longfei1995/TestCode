@@ -16,7 +16,7 @@ class ColorDetector:
         pass
     
     def _getPixelColorAtScreen(self, x: int, y: int) -> Tuple[int, int, int]:
-        """获取屏幕指定位置的像素颜色 (RGB)"""
+        """获取屏幕坐标系下：像素的颜色 (RGB)"""
         try:
             # 使用PIL截图方式
             screenshot = ImageGrab.grab(bbox=(x, y, x+1, y+1))
@@ -31,7 +31,7 @@ class ColorDetector:
             return (0, 0, 0)
     
     def getPixelPosColorInWindow(self, hwnd: int, x: int, y: int) -> Tuple[int, int, int]:
-        """获取窗口内指定位置的像素颜色 (相对于窗口左上角)"""
+        """获取窗口坐标系下：像素的颜色 (RGB)"""
         try:
             # 获取窗口位置
             window_rect = win32gui.GetWindowRect(hwnd)
@@ -47,7 +47,7 @@ class ColorDetector:
             return (0, 0, 0)
     
     def captureWindow(self, hwnd: int, x: int, y: int, width: int, height: int) -> Optional[Image.Image]:
-        """截取窗口指定区域"""
+        """截取窗口坐标系下的指定区域"""
         try:
             # 获取窗口位置
             window_rect = win32gui.GetWindowRect(hwnd)
