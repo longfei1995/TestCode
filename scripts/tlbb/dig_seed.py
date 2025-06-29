@@ -19,35 +19,10 @@ class DigSeed:
         self.kKeyHorse = "F10"
         self.stop_check_func = stop_check_func  # 停止检查函数
     
-    def sleepAuto(self, seconds):
-        """可中断的睡眠函数"""
-        if seconds <= 0:
-            return True
-        
-        # 将长时间睡眠分解为0.5秒的小段，每段都检查停止标志
-        sleep_interval = 0.5
-        total_slept = 0
-        
-        while total_slept < seconds:
-            # 检查是否需要停止
-            if self.stop_check_func and self.stop_check_func():
-                print("收到停止信号，中断睡眠")
-                return False
-            
-            # 计算本次睡眠时间
-            remaining = seconds - total_slept
-            current_sleep = min(sleep_interval, remaining)
-            
-            time.sleep(current_sleep)
-            total_slept += current_sleep
-        
-        return True
-    
     def getDownHorse(self):
         """下马"""
         self.keyboard_simulator.pressKey(self.kKeyHorse, self.hwnd)
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         print(f"下马, 等待1秒")
         return True
     
@@ -55,8 +30,7 @@ class DigSeed:
         """上马"""
         self.keyboard_simulator.pressKey(self.kKeyHorse, self.hwnd)
         print(f"上马, 等待7秒")
-        if not self.sleepAuto(7):
-            return False
+        time.sleep(7)
         return True
     
     def moveSceneConfirm(self):
@@ -73,8 +47,7 @@ class DigSeed:
         """选择种子任务"""
         # 先点击声望任务
         self.keyboard_simulator.mouseClick(105, 405, self.hwnd)
-        if not self.sleepAuto(0.5):
-            return False
+        time.sleep(1)
         # 选择对应等级任务
         if seed_level == 1:
             self.keyboard_simulator.mouseClick(117, 216, self.hwnd)
@@ -91,14 +64,12 @@ class DigSeed:
         else:
             print(f"这个等级的种子任务, 暂未实现: {seed_level}")
             return False
-        if not self.sleepAuto(0.5):
-            return False
+        time.sleep(1)
         
         # 点击接受任务
         self.keyboard_simulator.mouseClick(30, 475, self.hwnd)
         print(f"点击接受任务完成....")
-        if not self.sleepAuto(0.5):
-            return False
+        time.sleep(1)
         
         return True
     
@@ -136,8 +107,7 @@ class DigSeed:
                 images.append(img_array)
                 
                 if i < 2:  # 最后一次不需要等待
-                    if not self.sleepAuto(2):
-                        return False
+                    time.sleep(2)
             
             # 计算图像间的平均绝对差异
             if len(images) >= 2:
@@ -156,8 +126,7 @@ class DigSeed:
                     return True
             
             # 等待1秒再开始下一轮检测
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
         
         print(f"等待超时({max_wait_time}秒)，人物仍未静止")
         return False
@@ -183,8 +152,7 @@ class DigSeed:
         # 点击果实3次
         for i in range(3):
             self.keyboard_simulator.mouseClick(517, 426, self.hwnd)
-            if not self.sleepAuto(5):
-                return False
+            time.sleep(5)
         # 上坐骑
         if not self.getUpHorse():
             return False
@@ -204,8 +172,7 @@ class DigSeed:
         """点击觅影灵券"""
         # 点击背包栏 -> 点击任务栏 -> 右击任务栏第一格物品
         self.keyboard_simulator.mouseClick(755, 779, self.hwnd)
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         # 点击任务栏
         pic_ren_wu_button_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.ren_wu_button)
         if pic_ren_wu_button_pos is not None:
@@ -214,8 +181,7 @@ class DigSeed:
         else:
             print("未找到任务栏")
             return False
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         
         # 点击任务栏的第一个坐标
         pic_mi_yin_ling_qu_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.mi_yin_ling_qu)
@@ -225,8 +191,7 @@ class DigSeed:
         else:
             print("未找到觅影灵券")
             return False
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         return True
     
     def digSeed(self, seed_level:int = 1, is_dig_seed:bool = True) -> bool:
@@ -237,6 +202,7 @@ class DigSeed:
             return False
         # 双击乘黄长老
         self.keyboard_simulator.pressKey('`', self.hwnd)
+        time.sleep(1)
         pic_cheng_huang_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.cheng_huang)
         if pic_cheng_huang_pos is not None:
             self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
@@ -244,17 +210,14 @@ class DigSeed:
         else:
             print("自动寻路里未找到乘黄长老")
             return False
-        if not self.sleepAuto(2):
-            return False
+        time.sleep(2)
         
         # 点击对应等级的种子任务，并且接受任务
         if not self.selectSeedTask(seed_level):
             return False
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         self.keyboard_simulator.pressKey('esc', self.hwnd)
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         
         if is_dig_seed:
             ## 点击果实3次 -> 上坐骑 -> 选择任务框的第二个坐标
@@ -281,36 +244,29 @@ class DigSeed:
             else:
                 print("未找到提交灵药")
                 return False
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             self.keyboard_simulator.pressKey('esc', self.hwnd)
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             # 点击定位符
             self.keyboard_simulator.pressKey(self.kKeyDingWeiFu, self.hwnd)
-            if not self.sleepAuto(8):
-                return False
+            time.sleep(8)
         else:
             # 点击觅影灵券
             if not self.clickMiYingLingQuan():
                 return False
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             
-            # 寻路到怪物位置 -> 点击场景确认框 -> 等待人物到达怪物位置 -> 点击怪物
-            # 点击怪物位置
+            # 寻路到怪物位置 -> 点击场景确认框 -> 等待人物到达怪物位置 -> 点击怪物坐标
+            # 点击怪物坐标
             self.keyboard_simulator.mouseClick(149, 198, self.hwnd)
-            print(f"点击怪物位置完成....")
-            if not self.sleepAuto(1):
-                return False
+            print(f"点击怪物坐标完成....")
+            time.sleep(1)
             
             # 点击场景确认框
             self.moveSceneConfirm()
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             self.keyboard_simulator.pressKey('esc', self.hwnd)
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             
             # 等待人物到达怪物位置
             if not self.isPersonStop(max_wait_time=180):
@@ -323,23 +279,20 @@ class DigSeed:
             # 点击觅影灵券
             if not self.clickMiYingLingQuan():
                 return False
-            if not self.sleepAuto(1):
-                return False
+            time.sleep(1)
             
             # 开始打怪
             self.keyboard_simulator.pressKey('l', self.hwnd)
-            if not self.sleepAuto(10):
-                return False
+            time.sleep(10)
             self.keyboard_simulator.pressKey('l', self.hwnd)
-            if not self.sleepAuto(3):
-                return False
+            time.sleep(3)
             # 点击定位符
             self.keyboard_simulator.pressKey(self.kKeyDingWeiFu, self.hwnd)
-            if not self.sleepAuto(8):
-                return False
+            time.sleep(8)
         
         ## 通用流程 点击乘黄长老 -> 点击左侧任务 -> 点击完成
         self.keyboard_simulator.pressKey('`', self.hwnd)
+        time.sleep(1)
         pic_cheng_huang_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.cheng_huang)
         if pic_cheng_huang_pos is not None:
             self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
@@ -347,22 +300,18 @@ class DigSeed:
         else:
             print("未找到乘黄长老")
             return False
-        if not self.sleepAuto(2):
-            return False
+        time.sleep(2)
         # 点击任务
         self.keyboard_simulator.mouseClick(105, 405, self.hwnd)
         print(f"点击声望任务完成....")
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         # 点击完成
         self.keyboard_simulator.mouseClick(68, 474, self.hwnd)
         print(f"点击完成按钮....")
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         # 按键ESC
         self.keyboard_simulator.pressKey('esc', self.hwnd)
-        if not self.sleepAuto(1):
-            return False
+        time.sleep(1)
         
         return True
         

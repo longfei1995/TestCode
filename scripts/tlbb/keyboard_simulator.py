@@ -112,9 +112,9 @@ class KeyboardSimulator:
             # 移动鼠标到标题栏并点击
             win32api.SetCursorPos((title_bar_x, title_bar_y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.03, 0.05))
+            time.sleep(0.05)
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.05, 0.1))  # 等待窗口获得焦点
+            time.sleep(0.1)  # 等待窗口获得焦点
             
             # 计算目标位置在屏幕坐标系中的坐标
             target_screen_x = window_origin_x + x
@@ -138,7 +138,7 @@ class KeyboardSimulator:
             
             # 执行鼠标点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.03, 0.08))  # 减少点击间隔
+            time.sleep(0.05)  
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             return True
@@ -172,9 +172,9 @@ class KeyboardSimulator:
             # 移动鼠标到标题栏并点击
             win32api.SetCursorPos((title_bar_x, title_bar_y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.03, 0.05))
+            time.sleep(0.05)
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.05, 0.1))  # 等待窗口获得焦点
+            time.sleep(0.1)  # 等待窗口获得焦点
             
             # 计算目标位置在屏幕坐标系中的坐标
             target_screen_x = window_origin_x + x
@@ -198,15 +198,15 @@ class KeyboardSimulator:
             
             # 执行第一次点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.03, 0.05))
+            time.sleep(0.03) # 30ms
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             # 双击间隔时间（较短，模拟真实双击）
-            time.sleep(random.uniform(0.05, 0.08))
+            time.sleep(0.05) # 50ms
             
             # 执行第二次点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(random.uniform(0.03, 0.05))
+            time.sleep(0.03) # 30ms
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             return True
