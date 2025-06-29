@@ -3,17 +3,31 @@ import win32con
 import win32api
 import ctypes
 import os
+import sys
 from typing import List, Tuple, Optional
 from game_param import Bbox
 from PIL import ImageGrab
 from datetime import datetime
 import glob
+
 class WindowManager:
     """Windows窗口管理器"""
     
     def __init__(self):
         self.windows = []
-        self.pic_save_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pics")
+        self.pic_save_dir = self.getPicsDir()
+    
+    def getPicsDir(self):
+        """获取pics目录路径，兼容开发环境和打包后的环境"""
+        # 判断是否是打包后的环境
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            # 打包后的环境，在exe同目录创建pics文件夹（因为pics用于保存截图，需要可写）
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # 开发环境，在脚本同目录创建pics文件夹
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        return os.path.join(base_path, "pics")
     
     def isAdmin(self) -> bool:
         """检查当前程序是否以管理员权限运行"""

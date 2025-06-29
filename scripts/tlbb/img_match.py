@@ -21,7 +21,6 @@ class ImageMatch:
         self.window_y = window_rect[1]
         self.window_width = window_rect[2] - window_rect[0]
         self.window_height = window_rect[3] - window_rect[1]
-        self.current_file_path = os.path.dirname(os.path.abspath(__file__))
     
     def getImageCenterPos(self, image_path:str, confidence:float = 0.8):
         """

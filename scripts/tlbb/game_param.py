@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 from dataclasses import dataclass
 import os
+import sys
 
 @dataclass(frozen=True)
 class Point:
@@ -14,7 +15,19 @@ class Bbox:
     right: int = 0
     bottom: int = 0
 
-kPicDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img_src")
+def getImgSrcPath():
+    """获取图片资源路径，兼容开发环境和打包后的环境"""
+    # 判断是否是打包后的环境
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # 打包后的环境，从临时资源目录读取
+        base_path = getattr(sys, '_MEIPASS')
+    else:
+        # 开发环境，在脚本同目录查找
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    return os.path.join(base_path, "img_src")
+
+kPicDir = getImgSrcPath()
 @dataclass(frozen=True)
 class ImagePath:
     class main:

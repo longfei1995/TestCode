@@ -11,6 +11,10 @@ a = Analysis(
         ('icon.ico', '.'),
         # 包含样式文件到根目录
         ('styles.qss', '.'),
+        # 包含版本历史文件到根目录
+        ('version_history.txt', '.'),
+        # 包含图片资源文件夹
+        ('img_src', 'img_src'),
     ],
     hiddenimports=[
         # PyQt5相关模块
@@ -25,6 +29,15 @@ a = Analysis(
         # PIL/Pillow相关
         'PIL.Image',
         'PIL.ImageGrab',
+        # OpenCV相关
+        'cv2',
+        'cv2.cv2',
+        # 图像处理和自动化相关
+        'pyautogui',
+        'pyautogui._pyautogui_win',
+        'pymsgbox',
+        'pytweening',
+        'pyscreeze',
         # 其他可能需要的模块
         'numpy',
         'typing',
@@ -34,11 +47,16 @@ a = Analysis(
         'time',
         'random',
         'ctypes',
+        'threading',
+        'queue',
+        'logging',
         # 项目内部模块
         'game_param',
         'window_manager',
         'color_detector', 
         'keyboard_simulator',
+        'dig_seed',  # 新增的挖种子模块
+        'img_match',  # 图像匹配模块
     ],
     hookspath=[],
     hooksconfig={},

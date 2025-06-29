@@ -347,22 +347,22 @@ class GameUI(QMainWindow):
         
         # 创建一个临时的日志函数，因为此时UI还没创建
         temp_logs = []
-        def temp_log(message):
+        def tempLog(message):
             temp_logs.append(message)
         
         # 先重定向stdout到临时日志
-        sys.stdout = UILogStream(temp_log)
+        sys.stdout = UILogStream(tempLog)
         
         # 创建UI
         self.initUI()
         
         # 现在UI已创建，将临时日志添加到真正的日志窗口
         for log in temp_logs:
-            self.add_log(log)
-        sys.stdout = UILogStream(self.add_log)
+            self.addLog(log)
+        sys.stdout = UILogStream(self.addLog)
     
     def initUI(self):
-        self.setWindowTitle('豆子-版本: 250619')
+        self.setWindowTitle('豆子')
         self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
@@ -396,6 +396,12 @@ class GameUI(QMainWindow):
         dig_seed_layout.addWidget(self.createDigSeedArea())
         dig_seed_layout.addWidget(self.createDigSeedLogArea())
         self.tab_widget.addTab(dig_seed_tab, "挖种子")
+        
+        # 第三个选项卡：版本历史
+        update_log_tab = QWidget()
+        update_log_layout = QVBoxLayout(update_log_tab)
+        update_log_layout.addWidget(self.createUpdateLogArea())
+        self.tab_widget.addTab(update_log_tab, "版本历史")
         
         main_layout.addWidget(self.tab_widget)
         
@@ -522,7 +528,7 @@ class GameUI(QMainWindow):
         
         # 清除日志按钮
         clear_log_btn = QPushButton("清除日志")
-        clear_log_btn.clicked.connect(self.clear_log)
+        clear_log_btn.clicked.connect(self.clearLog)
         log_layout.addWidget(clear_log_btn)
         
         return log_group
@@ -597,10 +603,31 @@ class GameUI(QMainWindow):
         
         # 清除日志按钮
         clear_dig_seed_log_btn = QPushButton("清除挖种子日志")
-        clear_dig_seed_log_btn.clicked.connect(self.clear_dig_seed_log)
+        clear_dig_seed_log_btn.clicked.connect(self.clearDigSeedLog)
         log_layout.addWidget(clear_dig_seed_log_btn)
         
         return log_group
+    
+    def createUpdateLogArea(self):
+        """创建版本历史区域"""
+        update_log_group = QGroupBox("版本历史")
+        update_log_layout = QVBoxLayout(update_log_group)
+        
+        # 版本历史显示区域
+        self.update_log_text = QTextEdit()
+        self.update_log_text.setReadOnly(True)
+        self.update_log_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
+        update_log_layout.addWidget(self.update_log_text)
+        
+        # 刷新按钮
+        refresh_btn = QPushButton("刷新版本历史")
+        refresh_btn.clicked.connect(self.loadVersionHistory)
+        update_log_layout.addWidget(refresh_btn)
+        
+        # 加载版本历史
+        self.loadVersionHistory()
+        
+        return update_log_group
     
     def showAllWindows(self):
         """展示所有窗口"""
@@ -630,12 +657,12 @@ class GameUI(QMainWindow):
         # 获取当前选中的窗口句柄
         current_index = self.window_combobox.currentIndex()
         if current_index < 0:
-            self.add_log("请先选择一个窗口")
+            self.addLog("请先选择一个窗口")
             return
         
         hwnd = self.window_combobox.currentData()  # 获取存储的hwnd
         if hwnd == -1:
-            self.add_log("请先刷新窗口列表并选择有效窗口")
+            self.addLog("请先刷新窗口列表并选择有效窗口")
             return
         
         try:
@@ -653,7 +680,7 @@ class GameUI(QMainWindow):
                 self.dig_seed_start_btn.setEnabled(False)
                 
         except Exception as e:
-            self.add_log(f"激活窗口时出错: {str(e)}")
+            self.addLog(f"激活窗口时出错: {str(e)}")
             self.window_status_label.setText("当前窗口: 错误")
             self.window_status_label.setStyleSheet("color: red;")
     
@@ -661,7 +688,7 @@ class GameUI(QMainWindow):
         """触发团本线程"""
         hwnd = self.hwnd
         if hwnd == -1:
-            self.add_log("请先选择有效的窗口")
+            self.addLog("请先选择有效的窗口")
             return
         
         # 从UI获取参数
@@ -672,15 +699,15 @@ class GameUI(QMainWindow):
         
         # 验证参数
         if not key_sequence:
-            self.add_log("请输入按键序列")
+            self.addLog("请输入按键序列")
             return
         
         # 显示启动信息
         print(f"***************** 脚本开始启动 *****************")
         
         # 创建线程时传递参数
-        self.raid_thread = RaidThread(hwnd, self.add_log, key_interval, sleep_time, is_em, key_sequence)
-        self.raid_thread.log_signal.connect(self.add_log)
+        self.raid_thread = RaidThread(hwnd, self.addLog, key_interval, sleep_time, is_em, key_sequence)
+        self.raid_thread.log_signal.connect(self.addLog)
         # 无论线程是如何结束的（正常完成、异常退出、或被停止），
         # run() 方法的 finally 块都会执行，发出 finished_signal 信号。
         self.raid_thread.finished_signal.connect(self.afterThreadFinished)
@@ -703,7 +730,7 @@ class GameUI(QMainWindow):
         self.stop_btn.setEnabled(False)
         self.activate_btn.setEnabled(True)
     
-    def add_log(self, message: str):
+    def addLog(self, message: str):
         """添加日志信息"""
         from datetime import datetime
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -714,10 +741,10 @@ class GameUI(QMainWindow):
         if scrollbar:
             scrollbar.setValue(scrollbar.maximum())
     
-    def clear_log(self):
+    def clearLog(self):
         """清除日志"""
         self.log_text.clear()
-        self.add_log("日志已清除")
+        self.addLog("日志已清除")
     
     def closeEvent(self, event):
         """窗口关闭时恢复原始stdout"""
@@ -773,7 +800,7 @@ class GameUI(QMainWindow):
         """开始挖种子线程"""
         hwnd = self.hwnd
         if hwnd == -1:
-            self.add_dig_seed_log("请先选择有效的窗口")
+            self.addDigSeedLog("请先选择有效的窗口")
             return
         
         # 从UI获取参数
@@ -782,11 +809,11 @@ class GameUI(QMainWindow):
         is_dig_seed = self.task_type_combo.currentData()
         
         # 显示启动信息
-        self.add_dig_seed_log("***************** 挖种子脚本开始启动 *****************")
+        self.addDigSeedLog("***************** 挖种子脚本开始启动 *****************")
         
         # 创建线程
         self.dig_seed_thread = DigSeedThread(hwnd, seed_level, loop_count, is_dig_seed)
-        self.dig_seed_thread.log_signal.connect(self.add_dig_seed_log)
+        self.dig_seed_thread.log_signal.connect(self.addDigSeedLog)
         self.dig_seed_thread.finished_signal.connect(self.afterDigSeedThreadFinished)
         
         self.dig_seed_start_btn.setEnabled(False)
@@ -807,7 +834,7 @@ class GameUI(QMainWindow):
         self.dig_seed_stop_btn.setEnabled(False)
         self.activate_btn.setEnabled(True)
     
-    def add_dig_seed_log(self, message: str):
+    def addDigSeedLog(self, message: str):
         """添加挖种子日志信息"""
         from datetime import datetime
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -818,14 +845,37 @@ class GameUI(QMainWindow):
         if scrollbar:
             scrollbar.setValue(scrollbar.maximum())
     
-    def clear_dig_seed_log(self):
+    def clearDigSeedLog(self):
         """清除挖种子日志"""
         self.dig_seed_log_text.clear()
-        self.add_dig_seed_log("挖种子日志已清除")
+        self.addDigSeedLog("挖种子日志已清除")
+    
+    def loadVersionHistory(self):
+        """加载版本历史"""
+        try:
+            # 判断是否是打包后的环境
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                # 打包后的环境，从临时资源目录读取
+                base_path = getattr(sys, '_MEIPASS')
+            else:
+                # 开发环境，在脚本同目录查找
+                base_path = os.path.dirname(__file__)
+            
+            version_history_file = os.path.join(base_path, 'version_history.txt')
+            
+            if os.path.exists(version_history_file):
+                with open(version_history_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.update_log_text.setPlainText(content)
+            else:
+                self.update_log_text.setPlainText("未找到version_history.txt文件")
+                
+        except Exception as e:
+            self.update_log_text.setPlainText(f"读取版本历史失败：{str(e)}")
 
 
 # 自定义样式
-def load_stylesheet():
+def loadStylesheet():
     """加载样式表文件"""
     try:
         # 获取样式文件路径
@@ -850,7 +900,7 @@ def load_stylesheet():
 def main():
     app = QApplication(sys.argv)    
     # 应用样式
-    stylesheet = load_stylesheet()
+    stylesheet = loadStylesheet()
     if stylesheet:
         app.setStyleSheet(stylesheet)
         print("样式文件加载成功")

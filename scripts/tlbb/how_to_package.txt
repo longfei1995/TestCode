@@ -1,4 +1,5 @@
 # 1. 进入tlbb目录
+cd .\scripts\tlbb\
 python -m PyInstaller --clean start_ui.spec
 
 # 2. 分发方法
