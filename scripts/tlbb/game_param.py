@@ -1,10 +1,30 @@
 from typing import Dict, Tuple
 from dataclasses import dataclass
+import os
 
 @dataclass(frozen=True)
 class Point:
-    x: int
-    y: int
+    x: int = 0
+    y: int = 0
+
+@dataclass(frozen=True)
+class Bbox:
+    left: int = 0
+    top: int = 0
+    right: int = 0
+    bottom: int = 0
+
+kPicDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img_src")
+@dataclass(frozen=True)
+class ImagePath:
+    class main:
+        package: str = os.path.join(kPicDir, "main\\1.png")
+    class kun_wu:
+        cheng_huang: str = os.path.join(kPicDir, "kun_wu\\1.png")
+        ti_jiao_ling_yao: str = os.path.join(kPicDir, "kun_wu\\7.png")
+        ren_wu_button: str = os.path.join(kPicDir, "kun_wu\\9.png")
+        mi_yin_ling_qu: str = os.path.join(kPicDir, "kun_wu\\10.png")
+        move_scene_confirm: str = os.path.join(kPicDir, "kun_wu\\11.png")
 
 @dataclass
 class HPBarConfig:

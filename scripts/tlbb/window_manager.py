@@ -2,13 +2,18 @@ import win32gui
 import win32con
 import win32api
 import ctypes
+import os
 from typing import List, Tuple, Optional
-
+from game_param import Bbox
+from PIL import ImageGrab
+from datetime import datetime
+import glob
 class WindowManager:
     """Windows窗口管理器"""
     
     def __init__(self):
         self.windows = []
+        self.pic_save_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pics")
     
     def isAdmin(self) -> bool:
         """检查当前程序是否以管理员权限运行"""
@@ -155,9 +160,45 @@ class WindowManager:
                 print(f"发生错误: {e}")
                 return None
 
+    def saveBboxImage(self, hwnd:int, bbox:Bbox):
+        """保存指定窗口的指定区域截图"""
+        # 确保保存目录存在
+        if not os.path.exists(self.pic_save_dir):
+            os.makedirs(self.pic_save_dir)
+        
+        # 检查并清理目录中的PNG文件
+        png_files = glob.glob(os.path.join(self.pic_save_dir, "*.png"))
+        if len(png_files) >= 10:
+            # 按文件创建时间排序
+            png_files.sort(key=os.path.getctime)
+            # 删除最早的文件，直到剩下9张（为新文件腾出空间）
+            for old_file in png_files[:-9]:
+                try:
+                    os.remove(old_file)
+                except Exception as e:
+                    pass
+        
+        window_rect = self.getWindowRect(hwnd)
+        left = window_rect[0] + bbox.left
+        top = window_rect[1] + bbox.top
+        right = window_rect[0] + bbox.right
+        bottom = window_rect[1] + bbox.bottom
+        
+        screenshot = ImageGrab.grab(bbox=(left, top, right, bottom))
+        screenshot.save(os.path.join(self.pic_save_dir, f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"))
+        return screenshot
+
 # 使用示例
 if __name__ == "__main__":
     wm = WindowManager()
     # wm.list_windows()
-    wm.selectWindow()
+    hwnd = wm.selectWindow()
+    if hwnd is None:
+        print("未选择窗口")
+        exit()
+    window_rect = wm.getWindowRect(hwnd)
+    window_width = window_rect[2] - window_rect[0]
+    window_height = window_rect[3] - window_rect[1]
+    bbox = Bbox(0, 0, window_width, window_height)
+    wm.saveBboxImage(hwnd, bbox)
     

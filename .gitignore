@@ -11,6 +11,7 @@ debug/
 log/
 dist/
 __pycache__/
+scripts/tlbb/pics/
 
 # file
 *.pdf

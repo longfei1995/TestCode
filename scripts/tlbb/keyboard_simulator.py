@@ -43,6 +43,9 @@ class KeyboardSimulator:
         'NUMPAD8': 0x68, 'NUMPAD9': 0x69, 'MULTIPLY': 0x6A, 'ADD': 0x6B,
         'SUBTRACT': 0x6D, 'DECIMAL': 0x6E, 'DIVIDE': 0x6F,
         
+        # 符号键
+        '`': 0xC0, '~': 0xC0,  # 反引号/波浪号键 (VK_OEM_3)
+        
         # 其他常用键
         'CAPSLOCK': 0x14, 'NUMLOCK': 0x90, 'SCROLLLOCK': 0x91,
         'PAUSE': 0x13, 'PRINTSCREEN': 0x2C,
@@ -56,7 +59,7 @@ class KeyboardSimulator:
         key = key.upper()
         return self.kVirtualKeyCode.get(key, 0)
     
-    def pressKey(self, key: Union[str, int], hwnd: int = 0) -> bool:
+    def pressKey(self, key: Union[str, int], hwnd) -> bool:
         """按下并释放一个键
         Args:
             key: 按键（字符串或虚拟键码）
@@ -97,9 +100,21 @@ class KeyboardSimulator:
             if hwnd <= 0:
                 return False
             
-            # 获取窗口矩形 && 获取原点坐标 && 获取当前鼠标位置
+            # 获取窗口矩形 && 获取原点坐标 && 计算窗口宽度
             window_rect = win32gui.GetWindowRect(hwnd) # 返回窗口矩形左上角坐标和右下角坐标（像素）
             window_origin_x, window_origin_y = window_rect[0], window_rect[1]
+            window_width = window_rect[2] - window_rect[0]
+            
+            # 先点击标题栏以确保窗口获得焦点
+            title_bar_x = window_origin_x + window_width // 2  # 标题栏中央位置
+            title_bar_y = window_origin_y + 15  # 标题栏通常在顶部15像素左右
+            
+            # 移动鼠标到标题栏并点击
+            win32api.SetCursorPos((title_bar_x, title_bar_y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.03, 0.05))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.05, 0.1))  # 等待窗口获得焦点
             
             # 计算目标位置在屏幕坐标系中的坐标
             target_screen_x = window_origin_x + x
@@ -124,6 +139,74 @@ class KeyboardSimulator:
             # 执行鼠标点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
             time.sleep(random.uniform(0.03, 0.08))  # 减少点击间隔
+            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            
+            return True
+            
+        except Exception as e:
+            return False
+    
+    def mouseDoubleClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
+        """全局鼠标双击 - 使用SetCursorPos和mouse_event模拟真实鼠标
+        Args:
+            x: 相对于窗口原点的X坐标
+            y: 相对于窗口原点的Y坐标  
+            hwnd: 目标窗口句柄
+            button: 点击类型 ('left', 'right', 'middle')
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if hwnd <= 0:
+                return False
+            
+            # 获取窗口矩形 && 获取原点坐标 && 计算窗口宽度
+            window_rect = win32gui.GetWindowRect(hwnd) # 返回窗口矩形左上角坐标和右下角坐标（像素）
+            window_origin_x, window_origin_y = window_rect[0], window_rect[1]
+            window_width = window_rect[2] - window_rect[0]
+            
+            # 先点击标题栏以确保窗口获得焦点
+            title_bar_x = window_origin_x + window_width // 2  # 标题栏中央位置
+            title_bar_y = window_origin_y + 15  # 标题栏通常在顶部15像素左右
+            
+            # 移动鼠标到标题栏并点击
+            win32api.SetCursorPos((title_bar_x, title_bar_y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.03, 0.05))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.05, 0.1))  # 等待窗口获得焦点
+            
+            # 计算目标位置在屏幕坐标系中的坐标
+            target_screen_x = window_origin_x + x
+            target_screen_y = window_origin_y + y
+            
+            # 移动鼠标到目标位置（瞬间完成）
+            win32api.SetCursorPos((target_screen_x, target_screen_y))
+            
+            # 根据按钮类型选择mouse_event标志
+            if button.lower() == 'left':
+                down_flag = win32con.MOUSEEVENTF_LEFTDOWN
+                up_flag = win32con.MOUSEEVENTF_LEFTUP
+            elif button.lower() == 'right':
+                down_flag = win32con.MOUSEEVENTF_RIGHTDOWN
+                up_flag = win32con.MOUSEEVENTF_RIGHTUP
+            elif button.lower() == 'middle':
+                down_flag = win32con.MOUSEEVENTF_MIDDLEDOWN
+                up_flag = win32con.MOUSEEVENTF_MIDDLEUP
+            else:
+                return False
+            
+            # 执行第一次点击
+            win32api.mouse_event(down_flag, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.03, 0.05))
+            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            
+            # 双击间隔时间（较短，模拟真实双击）
+            time.sleep(random.uniform(0.05, 0.08))
+            
+            # 执行第二次点击
+            win32api.mouse_event(down_flag, 0, 0, 0, 0)
+            time.sleep(random.uniform(0.03, 0.05))
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             return True

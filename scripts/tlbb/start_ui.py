@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                             QGroupBox, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox,
-                            QMessageBox, QCheckBox)
+                            QMessageBox, QCheckBox, QTabWidget)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
@@ -12,6 +12,7 @@ from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
+from dig_seed import DigSeed
 
 
 class UILogStream:
@@ -246,6 +247,95 @@ class RaidThread(QThread):
         self.running = False
 
 
+class DigSeedThread(QThread):
+    """后台运行挖种子的线程"""
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal()
+    
+    def __init__(self, hwnd: int, seed_level: int, loop_count: int, is_dig_seed: bool):
+        super().__init__()
+        self.hwnd = hwnd
+        self.seed_level = seed_level
+        self.loop_count = loop_count
+        self.is_dig_seed = is_dig_seed
+        self.running = True
+        self.original_stdout = None
+    
+    def run(self):
+        try:
+            # 在线程中重定向stdout到UI日志
+            self.original_stdout = sys.stdout
+            sys.stdout = UILogStream(self.log_signal.emit)
+            
+            # 开始挖种子的主要逻辑
+            self.digSeedProcess()
+        except Exception as e:
+            self.log_signal.emit(f"错误：{str(e)}")
+        finally:
+            # 恢复原始stdout
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+            self.finished_signal.emit()
+    
+    def digSeedProcess(self):
+        """挖种子的主要逻辑"""
+        import time
+        
+        print(f"开始任务...")
+        print(f"种子等级: {self.seed_level}")
+        print(f"循环次数: {self.loop_count}")
+        
+        start_task = "挖种子" if self.is_dig_seed else "打怪"
+        print(f"任务模式: 从{start_task}开始，挖种子和打怪交替进行")
+        
+        # 传递停止检查函数给DigSeed类
+        dig_seed = DigSeed(self.hwnd, stop_check_func=lambda: not self.running)
+        
+        for i in range(self.loop_count):
+            if not self.running:
+                print("收到停止信号，退出任务循环")
+                return
+            
+            # 确定当前轮次应该执行的任务类型（根据起始任务和轮次决定）
+            if self.is_dig_seed:
+                # 选择挖种子开始：第1轮挖种子，第2轮打怪，第3轮挖种子...
+                current_is_dig_seed = (i % 2 == 0)  # 偶数轮号(i=0,2,4...)挖种子，奇数轮号(i=1,3,5...)打怪
+                task_name = "挖种子" if current_is_dig_seed else "打怪"
+            else:
+                # 选择打怪开始：第1轮打怪，第2轮挖种子，第3轮打怪...
+                current_is_dig_seed = (i % 2 == 1)  # 偶数轮号(i=0,2,4...)打怪，奇数轮号(i=1,3,5...)挖种子
+                task_name = "打怪" if (i % 2 == 0) else "挖种子"
+            
+            print(f"=== 第 {i+1}/{self.loop_count} 轮{task_name}开始 ===")
+            
+            try:
+                success = dig_seed.digSeed(seed_level=self.seed_level, is_dig_seed=current_is_dig_seed)
+                if success:
+                    print(f"第 {i+1} 轮{task_name}完成")
+                elif success is False:
+                    # 如果返回False，可能是被中断了
+                    if not self.running:
+                        print(f"第 {i+1} 轮{task_name}被用户中断")
+                        return
+                    else:
+                        print(f"第 {i+1} 轮{task_name}失败")
+            except Exception as e:
+                print(f"第 {i+1} 轮{task_name}出现异常: {str(e)}")
+                if not self.running:
+                    print("检测到停止信号，退出任务循环")
+                    return
+            
+            # 每轮之间的间隔
+            if i < self.loop_count - 1 and self.running:
+                print("等待1秒后开始下一轮...")
+                time.sleep(1)
+        
+        print("**************任务完成**************")
+    
+    def stop(self):
+        self.running = False
+
+
 class GameUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -273,7 +363,7 @@ class GameUI(QMainWindow):
     
     def initUI(self):
         self.setWindowTitle('豆子-版本: 250619')
-        self.setGeometry(100, 100, 500, 500)
+        self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
         icon_path = self.getIconPath()
@@ -287,10 +377,27 @@ class GameUI(QMainWindow):
         # 主布局
         main_layout = QVBoxLayout(central_widget)
         
-        # 添加三个功能区域
+        # 添加窗口选择区域（共用）
         main_layout.addWidget(self.createWindowSelectionArea())
-        main_layout.addWidget(self.createControlArea())
-        main_layout.addWidget(self.createLogArea())
+        
+        # 创建选项卡
+        self.tab_widget = QTabWidget()
+        
+        # 第一个选项卡：自动按键
+        auto_key_tab = QWidget()
+        auto_key_layout = QVBoxLayout(auto_key_tab)
+        auto_key_layout.addWidget(self.createControlArea())
+        auto_key_layout.addWidget(self.createLogArea())
+        self.tab_widget.addTab(auto_key_tab, "自动按键")
+        
+        # 第二个选项卡：挖种子
+        dig_seed_tab = QWidget()
+        dig_seed_layout = QVBoxLayout(dig_seed_tab)
+        dig_seed_layout.addWidget(self.createDigSeedArea())
+        dig_seed_layout.addWidget(self.createDigSeedLogArea())
+        self.tab_widget.addTab(dig_seed_tab, "挖种子")
+        
+        main_layout.addWidget(self.tab_widget)
         
         # 检查是不是由管理员运行
         if self.window_manager.isAdmin():
@@ -420,6 +527,81 @@ class GameUI(QMainWindow):
         
         return log_group
     
+    def createDigSeedArea(self):
+        """创建挖种子控制区域"""
+        dig_seed_group = QGroupBox("挖种子控制")
+        dig_seed_layout = QVBoxLayout(dig_seed_group)
+        
+        # 1. 参数设置布局
+        param_layout = QHBoxLayout()
+        
+        # 种子等级
+        param_layout.addWidget(QLabel("种子等级:"))
+        self.seed_level_spinbox = QSpinBox()
+        self.seed_level_spinbox.setRange(1, 4)
+        self.seed_level_spinbox.setValue(2)
+        param_layout.addWidget(self.seed_level_spinbox)
+        
+        # 循环次数
+        param_layout.addWidget(QLabel("循环次数:"))
+        self.loop_count_spinbox = QSpinBox()
+        self.loop_count_spinbox.setRange(1, 20)
+        self.loop_count_spinbox.setValue(10)
+        param_layout.addWidget(self.loop_count_spinbox)
+        
+        # 任务类型
+        param_layout.addWidget(QLabel("起始任务:"))
+        self.task_type_combo = QComboBox()
+        self.task_type_combo.addItem("挖种子", True)
+        self.task_type_combo.addItem("打怪", False)
+        param_layout.addWidget(self.task_type_combo)
+        
+        # 2. 按钮布局
+        button_layout = QHBoxLayout()
+        
+        # 开始按钮
+        self.dig_seed_start_btn = QPushButton("开始挖种子")
+        self.dig_seed_start_btn.clicked.connect(self.startDigSeedThread)
+        self.dig_seed_start_btn.setEnabled(False)  # 初始状态禁用
+        button_layout.addWidget(self.dig_seed_start_btn)
+        
+        # 停止按钮
+        self.dig_seed_stop_btn = QPushButton("停止")
+        self.dig_seed_stop_btn.clicked.connect(self.stopDigSeedThread)
+        self.dig_seed_stop_btn.setEnabled(False)
+        button_layout.addWidget(self.dig_seed_stop_btn)
+        
+        # 3. 说明文字
+        info_string = "说明："
+        info_string += "\n• 一定要确保任务追踪打开，且只有种子任务."
+        info_string += "\n• F9一定要是定位符，F10一定要是上坐骑，且一定要打开非聊天模式."
+        info_label = QLabel(info_string)
+        info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
+        info_label.setWordWrap(True)
+        
+        dig_seed_layout.addLayout(param_layout)
+        dig_seed_layout.addWidget(info_label)
+        dig_seed_layout.addLayout(button_layout)
+        
+        return dig_seed_group
+    
+    def createDigSeedLogArea(self):
+        """创建挖种子日志区域"""
+        log_group = QGroupBox("挖种子日志")
+        log_layout = QVBoxLayout(log_group)
+        
+        self.dig_seed_log_text = QTextEdit()
+        self.dig_seed_log_text.setReadOnly(True)
+        self.dig_seed_log_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
+        log_layout.addWidget(self.dig_seed_log_text)
+        
+        # 清除日志按钮
+        clear_dig_seed_log_btn = QPushButton("清除挖种子日志")
+        clear_dig_seed_log_btn.clicked.connect(self.clear_dig_seed_log)
+        log_layout.addWidget(clear_dig_seed_log_btn)
+        
+        return log_group
+    
     def showAllWindows(self):
         """展示所有窗口"""
         self.window_list = self.window_manager.getAllWindows()
@@ -463,10 +645,12 @@ class GameUI(QMainWindow):
                 self.window_status_label.setText(f"当前窗口: [{hwnd}] {self.window_combobox.currentText().split('] ', 1)[1] if '] ' in self.window_combobox.currentText() else ''}")
                 self.window_status_label.setStyleSheet("color: green;")
                 self.start_btn.setEnabled(True)
+                self.dig_seed_start_btn.setEnabled(True)  # 同时启用挖种子按钮
             else:
                 self.window_status_label.setText("当前窗口: 激活失败")
                 self.window_status_label.setStyleSheet("color: red;")
                 self.start_btn.setEnabled(False)
+                self.dig_seed_start_btn.setEnabled(False)
                 
         except Exception as e:
             self.add_log(f"激活窗口时出错: {str(e)}")
@@ -584,6 +768,60 @@ class GameUI(QMainWindow):
             icon_path = os.path.join(base_path, 'icon.ico')
         
         return icon_path
+
+    def startDigSeedThread(self):
+        """开始挖种子线程"""
+        hwnd = self.hwnd
+        if hwnd == -1:
+            self.add_dig_seed_log("请先选择有效的窗口")
+            return
+        
+        # 从UI获取参数
+        seed_level = self.seed_level_spinbox.value()
+        loop_count = self.loop_count_spinbox.value()
+        is_dig_seed = self.task_type_combo.currentData()
+        
+        # 显示启动信息
+        self.add_dig_seed_log("***************** 挖种子脚本开始启动 *****************")
+        
+        # 创建线程
+        self.dig_seed_thread = DigSeedThread(hwnd, seed_level, loop_count, is_dig_seed)
+        self.dig_seed_thread.log_signal.connect(self.add_dig_seed_log)
+        self.dig_seed_thread.finished_signal.connect(self.afterDigSeedThreadFinished)
+        
+        self.dig_seed_start_btn.setEnabled(False)
+        self.dig_seed_stop_btn.setEnabled(True)
+        self.activate_btn.setEnabled(False)
+        
+        self.dig_seed_thread.start()
+    
+    def stopDigSeedThread(self):
+        """停止挖种子线程"""
+        if hasattr(self, 'dig_seed_thread') and self.dig_seed_thread and self.dig_seed_thread.isRunning():
+            self.dig_seed_thread.stop()
+            self.dig_seed_thread.wait()
+    
+    def afterDigSeedThreadFinished(self):
+        """挖种子线程结束后的处理"""
+        self.dig_seed_start_btn.setEnabled(True)
+        self.dig_seed_stop_btn.setEnabled(False)
+        self.activate_btn.setEnabled(True)
+    
+    def add_dig_seed_log(self, message: str):
+        """添加挖种子日志信息"""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.dig_seed_log_text.append(f"[{timestamp}] {message}")
+        
+        # 自动滚动到底部
+        scrollbar = self.dig_seed_log_text.verticalScrollBar()
+        if scrollbar:
+            scrollbar.setValue(scrollbar.maximum())
+    
+    def clear_dig_seed_log(self):
+        """清除挖种子日志"""
+        self.dig_seed_log_text.clear()
+        self.add_dig_seed_log("挖种子日志已清除")
 
 
 # 自定义样式
