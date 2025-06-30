@@ -3,7 +3,10 @@ import win32con
 import win32gui
 import time
 import random
+import os
+import tempfile
 from typing import Union, List
+from pathlib import Path
 
 class KeyboardSimulator:
     """键盘模拟器"""
@@ -52,7 +55,59 @@ class KeyboardSimulator:
     }
     
     def __init__(self):
-        pass
+        # 初始化鼠标锁相关属性
+        self.lock_file = Path(tempfile.gettempdir()) / "tlbb_mouse_lock.txt"
+        self.lock_timeout = 10  # 10秒超时
+    
+    def _getMouseLock(self) -> bool:
+        """获取鼠标锁 - 一直等待直到获取成功
+        Returns:
+            bool: 总是返回True（一直等待直到获取成功）
+        """
+        while True:  # 无限循环，直到获取到锁
+            if not self.lock_file.exists():
+                # 锁文件不存在，尝试创建
+                try:
+                    with open(self.lock_file, 'w') as f:
+                        f.write(str(time.time()))
+                    return True
+                except Exception:
+                    time.sleep(0.05)  # 创建失败，短暂等待后重试
+                    continue
+            else:
+                # 锁文件存在，检查是否超时
+                try:
+                    with open(self.lock_file, 'r') as f:
+                        lock_time_str = f.read().strip()
+                        if lock_time_str:
+                            lock_time = float(lock_time_str)
+                        else:
+                            # 空文件，删除重试
+                            self._releaseMouseLock()
+                            continue
+                    
+                    current_time = time.time()
+                    if current_time - lock_time > self.lock_timeout:
+                        # 超时，强制释放锁
+                        print(f"检测到鼠标锁超时（{self.lock_timeout}秒），强制释放锁")
+                        self._releaseMouseLock()
+                        continue
+                    else:
+                        # 锁未超时，等待
+                        time.sleep(0.1)  # 稍微增加等待间隔，减少CPU占用
+                        continue
+                except Exception:
+                    # 读取失败，可能文件损坏，删除重试
+                    self._releaseMouseLock()
+                    continue
+    
+    def _releaseMouseLock(self) -> None:
+        """释放鼠标锁"""
+        try:
+            if self.lock_file.exists():
+                self.lock_file.unlink()
+        except Exception:
+            pass  # 删除失败不影响程序运行
     
     def getVirtualKeyCode(self, key: str) -> int:
         """获取按键的虚拟键码"""
@@ -96,6 +151,17 @@ class KeyboardSimulator:
         Returns:
             bool: 是否成功
         """
+        # 获取鼠标锁（一直等待直到获取成功）
+        self._getMouseLock()
+        
+        try:
+            return self._mouceClick(x, y, hwnd, button)
+        finally:
+            # 确保锁总是被释放
+            self._releaseMouseLock()
+    
+    def _mouceClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
+        """执行鼠标点击的具体逻辑"""
         try:
             if hwnd <= 0:
                 return False
@@ -156,6 +222,17 @@ class KeyboardSimulator:
         Returns:
             bool: 是否成功
         """
+        # 获取鼠标锁（一直等待直到获取成功）
+        self._getMouseLock()
+        
+        try:
+            return self._mouseDoubleClick(x, y, hwnd, button)
+        finally:
+            # 确保锁总是被释放
+            self._releaseMouseLock()
+    
+    def _mouseDoubleClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
+        """执行鼠标双击的具体逻辑"""
         try:
             if hwnd <= 0:
                 return False
