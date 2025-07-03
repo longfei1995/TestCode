@@ -78,26 +78,34 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# onedir模式：分离exe和资源文件
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
+    [],  # 不包含 a.binaries
+    exclude_binaries=True,  # 关键：排除二进制文件，使其分离
     name='tlbb_assistant',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,  # 设置为False以创建Windows GUI应用
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # 添加图标（如果有的话）
     icon='icon.ico',
+)
+
+# 创建包含所有文件的目录
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='tlbb_assistant'
 ) 

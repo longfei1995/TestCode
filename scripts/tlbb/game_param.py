@@ -3,6 +3,27 @@ from dataclasses import dataclass
 import os
 import sys
 
+def getBasePath():
+    """获取exe所在的路径，兼容开发环境和打包后的环境"""
+    # 判断是否是打包后的环境
+    if getattr(sys, 'frozen', False):
+        # 打包后的环境
+        if hasattr(sys, '_MEIPASS'):
+            # onefile模式：从临时资源目录读取
+            base_path = getattr(sys, '_MEIPASS')
+        else:
+            # onedir模式：从可执行文件所在目录读取
+            base_path = os.path.dirname(sys.executable)
+    else:
+        # 开发环境，在脚本同目录查找
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    return base_path
+
+# 全局路径常量
+kBaseDir = getBasePath()
+kPicDir = os.path.join(kBaseDir, "img_src")
+
 @dataclass(frozen=True)
 class Point:
     x: int = 0
@@ -15,19 +36,6 @@ class Bbox:
     right: int = 0
     bottom: int = 0
 
-def getImgSrcPath():
-    """获取图片资源路径，兼容开发环境和打包后的环境"""
-    # 判断是否是打包后的环境
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # 打包后的环境，从临时资源目录读取
-        base_path = getattr(sys, '_MEIPASS')
-    else:
-        # 开发环境，在脚本同目录查找
-        base_path = os.path.dirname(os.path.abspath(__file__))
-    
-    return os.path.join(base_path, "img_src")
-
-kPicDir = getImgSrcPath()
 @dataclass(frozen=True)
 class ImagePath:
     class main:

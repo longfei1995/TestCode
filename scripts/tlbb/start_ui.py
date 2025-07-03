@@ -8,7 +8,7 @@ from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
 import os
 
-from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto
+from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
@@ -366,7 +366,7 @@ class GameUI(QMainWindow):
         self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
-        icon_path = self.getIconPath()
+        icon_path = os.path.join(kBaseDir, "icon.ico")
         if icon_path and os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         
@@ -778,23 +778,6 @@ class GameUI(QMainWindow):
         msg.setDefaultButton(QMessageBox.Ok)
         msg.resize(500, 400)  # 设置对话框大小
         msg.exec_()
-    
-    def getIconPath(self):
-        """获取图标文件路径，兼容开发环境和打包后的环境"""
-        import sys
-        import os
-        
-        # 判断是否是打包后的环境
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            # 打包后的环境，图标文件在_MEIPASS目录下
-            base_path = getattr(sys, '_MEIPASS')
-            icon_path = os.path.join(base_path, 'icon.ico')
-        else:
-            # 开发环境，图标文件在脚本同目录下
-            base_path = os.path.dirname(__file__)
-            icon_path = os.path.join(base_path, 'icon.ico')
-        
-        return icon_path
 
     def startDigSeedThread(self):
         """开始挖种子线程"""
@@ -853,15 +836,7 @@ class GameUI(QMainWindow):
     def loadVersionHistory(self):
         """加载版本历史"""
         try:
-            # 判断是否是打包后的环境
-            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                # 打包后的环境，从临时资源目录读取
-                base_path = getattr(sys, '_MEIPASS')
-            else:
-                # 开发环境，在脚本同目录查找
-                base_path = os.path.dirname(__file__)
-            
-            version_history_file = os.path.join(base_path, 'version_history.txt')
+            version_history_file = os.path.join(kBaseDir, 'version_history.txt')
             
             if os.path.exists(version_history_file):
                 with open(version_history_file, 'r', encoding='utf-8') as f:
@@ -879,12 +854,7 @@ def loadStylesheet():
     """加载样式表文件"""
     try:
         # 获取样式文件路径
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            # 打包后的环境
-            style_path = os.path.join(getattr(sys, '_MEIPASS'), 'styles.qss')
-        else:
-            # 开发环境
-            style_path = os.path.join(os.path.dirname(__file__), 'styles.qss')
+        style_path = os.path.join(kBaseDir, 'styles.qss')
         
         # 读取样式文件
         if os.path.exists(style_path):

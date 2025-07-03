@@ -5,7 +5,7 @@ import ctypes
 import os
 import sys
 from typing import List, Tuple, Optional
-from game_param import Bbox
+from game_param import Bbox, kBaseDir
 from PIL import ImageGrab
 from datetime import datetime
 import glob
@@ -15,19 +15,7 @@ class WindowManager:
     
     def __init__(self):
         self.windows = []
-        self.pic_save_dir = self.getPicsDir()
-    
-    def getPicsDir(self):
-        """获取pics目录路径，兼容开发环境和打包后的环境"""
-        # 判断是否是打包后的环境
-        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-            # 打包后的环境，在exe同目录创建pics文件夹（因为pics用于保存截图，需要可写）
-            base_path = os.path.dirname(sys.executable)
-        else:
-            # 开发环境，在脚本同目录创建pics文件夹
-            base_path = os.path.dirname(os.path.abspath(__file__))
-        
-        return os.path.join(base_path, "pics")
+        self.pic_save_dir = os.path.join(kBaseDir, "pics")
     
     def isAdmin(self) -> bool:
         """检查当前程序是否以管理员权限运行"""
@@ -182,11 +170,12 @@ class WindowManager:
         
         # 检查并清理目录中的PNG文件
         png_files = glob.glob(os.path.join(self.pic_save_dir, "*.png"))
-        if len(png_files) >= 10:
+        if len(png_files) >= 100:
             # 按文件创建时间排序
             png_files.sort(key=os.path.getctime)
-            # 删除最早的文件，直到剩下9张（为新文件腾出空间）
-            for old_file in png_files[:-9]:
+            # 删除最老的50张文件
+            files_to_delete = png_files[:50]
+            for old_file in files_to_delete:
                 try:
                     os.remove(old_file)
                 except Exception as e:
