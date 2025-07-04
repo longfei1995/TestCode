@@ -84,9 +84,11 @@ class DigSeed:
             bool: 是否成功检测到人物静止
         """
         # 定义人物周围区域 (相对于窗口的坐标)
-        bbox_x = 660
-        bbox_y = 200
-        bbox = Bbox(bbox_x, bbox_y, bbox_x + 200, bbox_y + 100)  # 人物周围区域
+        bbox_x1 = 395
+        bbox_y1 = 573
+        bbox_x2 = 651   
+        bbox_y2 = 648
+        bbox = Bbox(bbox_x1, bbox_y1, bbox_x2, bbox_y2)  # 人物周围区域
         start_time = time.time()
         
         print(f"开始持续监测人物是否静止，最长等待{max_wait_time}秒...")

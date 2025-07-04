@@ -578,9 +578,10 @@ class GameUI(QMainWindow):
         button_layout.addWidget(self.dig_seed_stop_btn)
         
         # 3. 说明文字
-        info_string = "说明："
-        info_string += "\n• 一定要确保任务追踪打开，且只有种子任务."
-        info_string += "\n• F9一定要是定位符，F10一定要是上坐骑，且一定要打开非聊天模式."
+        info_string = "三点说明："
+        info_string += "\n1. 一定要确保游戏窗口没有其他窗口遮挡."
+        info_string += "\n2. 一定要确保任务追踪打开，且只有种子任务."
+        info_string += "\n3. F9一定要是定位符，F10一定要是上坐骑，且一定要打开非聊天模式."
         info_label = QLabel(info_string)
         info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
         info_label.setWordWrap(True)
