@@ -1,3 +1,8 @@
+"""
+@author: Hu Yunhao
+@time: 2025/07/04
+@desc: 获取指定窗口坐标系下的颜色，并进行颜色判断
+"""
 import win32gui
 import win32ui
 import win32con

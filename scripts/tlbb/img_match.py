@@ -52,6 +52,35 @@ class ImageMatch:
         except Exception as e:
             print(f"获取图片中心位置失败: {e}")
         return None
+    
+    def getImageBbox(self, image_path:str, confidence:float = 0.8):
+        """
+        获取图片在窗口坐标系下的bbox
+        Args:
+            image_path: 图片路径
+            confidence: 置信度
+        Returns:
+            Bbox: 图片bbox
+            None: 未找到图片
+        """
+        try:
+            window_region = (self.window_x, self.window_y, self.window_width, self.window_height)
+            pic_region = pyautogui.locateOnScreen(
+                image=image_path, 
+                confidence=confidence,
+                grayscale=False,
+                region=window_region    # 指定搜索区域
+            )
+            if pic_region is not None:
+                bbox_left = pic_region.left - self.window_x
+                bbox_top = pic_region.top - self.window_y
+                bbox_right = pic_region.left + pic_region.width - self.window_x
+                bbox_bottom = pic_region.top + pic_region.height - self.window_y
+                self.window_manager.saveBboxImage(self.hwnd, Bbox(bbox_left, bbox_top, bbox_right, bbox_bottom))
+                return Bbox(bbox_left, bbox_top, bbox_right, bbox_bottom)
+        except Exception as e:
+            print(f"获取图片bbox失败: {e}")
+        return None
 
 
 if __name__ == "__main__":

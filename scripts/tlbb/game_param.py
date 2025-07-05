@@ -38,8 +38,11 @@ class Bbox:
 
 @dataclass(frozen=True)
 class ImagePath:
-    class main:
-        package: str = os.path.join(kPicDir, "main\\1.png")
+    class auto_return:
+        auto_find: str = os.path.join(kPicDir, "auto_return\\1.png")
+        di_fu: str = os.path.join(kPicDir, "auto_return\\2.png")
+        meng_po: str = os.path.join(kPicDir, "auto_return\\3.png")
+        da_li: str = os.path.join(kPicDir, "auto_return\\4.png")
     class kun_wu:
         cheng_huang: str = os.path.join(kPicDir, "kun_wu\\1.png")
         ti_jiao_ling_yao: str = os.path.join(kPicDir, "kun_wu\\7.png")

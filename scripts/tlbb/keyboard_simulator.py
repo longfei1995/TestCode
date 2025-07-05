@@ -291,6 +291,29 @@ class KeyboardSimulator:
         except Exception as e:
             return False
 
+    def typeChar(self, char: str, hwnd) -> bool:
+        """输入字符 - 使用WM_CHAR消息
+        Args:
+            char: 要输入的字符
+            hwnd: 目标窗口句柄
+        """
+        try:
+            if len(char) != 1:
+                print(f"typeChar只能输入单个字符，收到: {char}")
+                return False
+            
+            # 获取字符的ASCII码
+            char_code = ord(char)
+            
+            # 发送WM_CHAR消息
+            win32api.PostMessage(hwnd, win32con.WM_CHAR, char_code, 0)
+            time.sleep(random.uniform(0.05, 0.08))  # 短暂延迟
+            return True
+            
+        except Exception as e:
+            print(f"字符输入失败: {e}")
+            return False
+
 # 使用示例
 if __name__ == "__main__":
     # 测试全局鼠标点击方法
