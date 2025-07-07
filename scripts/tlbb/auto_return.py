@@ -9,6 +9,7 @@ from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
 from img_match import ImageMatch
 from game_param import ImagePath
+from dig_seed import DigSeed  # 导入DigSeed类
 import time
 
 class AutoReturn:
@@ -17,8 +18,26 @@ class AutoReturn:
         self.window_manager = WindowManager()
         self.image_match = ImageMatch(self.hwnd)
         self.keyboard_simulator = KeyboardSimulator()
+        # 创建DigSeed实例，用于复用其方法
+        self.dig_seed_helper = DigSeed(hwnd)
     
-    def typeNumber(self, number:str):
+    def _moveSceneConfirm(self):
+        """移动场景确认 - 使用DigSeed类的方法"""
+        return self.dig_seed_helper.moveSceneConfirm()
+    
+    def _getDownHorse(self):
+        """下马"""
+        return self.dig_seed_helper.getDownHorse()  
+    
+    def _getUpHorse(self):
+        """上马"""
+        return self.dig_seed_helper.getUpHorse()
+    
+    def _isPersonStop(self):
+        """判断人物是否停止"""
+        return self.dig_seed_helper.isPersonStop()
+    
+    def _typeNumber(self, number:str):
         """输入数字"""
         # 按数字前按三下删除
         for _ in range(3):
@@ -29,7 +48,7 @@ class AutoReturn:
             self.keyboard_simulator.typeChar(char, self.hwnd)
             time.sleep(0.05)
     
-    def escapeHell(self):
+    def _escapeHell(self):
         """从地府去大理"""
         print("当前人物在地府，开始逃离地府去大理....")
         # 点击自动寻路
@@ -56,7 +75,7 @@ class AutoReturn:
         
         return True
     
-    def isInHell(self):
+    def _isInHell(self):
         """判断是否在地府"""
         # 获取地府图片
         bbox = self.image_match.getImageBbox(ImagePath.auto_return.di_fu)
@@ -64,19 +83,19 @@ class AutoReturn:
             return True
         return False
     
-    def isInXueYuan(self):
+    def _isInXueYuan(self):
         """判断是否在雪原"""
+        # todo
         # 获取雪原图片
-        bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan)
-        if bbox is not None:
-            return True
+        # bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan)
+        # if bbox is not None:
+        #     return True
         return False
     
     def locateAutoReturn(self, x:str, y:str):
-        # 点击"`"获取对话框
+        # 获取自动寻路对话框
         self.keyboard_simulator.pressKey("`", self.hwnd)
         time.sleep(1)
-        # 获取自动返回对话框
         bbox = self.image_match.getImageBbox(ImagePath.auto_return.auto_find)
         if bbox is not None:
             # 计算两个坐标框的坐标，和移动按钮
@@ -86,23 +105,31 @@ class AutoReturn:
             x3 = (int)(bbox.left + 113)
             # 输入x坐标
             self.keyboard_simulator.mouseClick(x1, y1, self.hwnd)
-            self.typeNumber(x)
+            self._typeNumber(x)
+            time.sleep(0.5)
             # 输入y坐标
             self.keyboard_simulator.mouseClick(x2, y2, self.hwnd)
-            self.typeNumber(y)
+            self._typeNumber(y)
+            time.sleep(0.5)
             # 点击移动按钮
             self.keyboard_simulator.mouseClick(x3, y3, self.hwnd)
+            time.sleep(0.5)
             return True
         else:
             return False
     
-    
-    def toXueYuan(self):
+    def toXueYuan(self, is_return_immediately:bool = False):
         """去雪原"""
-        while True:
-            # 判断是否在雪原
-            
-  
+        # todo
+        # 如果是立即返回，那么检查是否有确定框
+        if is_return_immediately:
+            pass
+            # todo 检查是否存在确定框
+        # 如果在地府，那么执行回点流程，否则不做其他动作
+        if self._isInHell():
+            self._escapeHell()
+        else:
+            pass
 
 
 if __name__ == "__main__":
@@ -112,5 +139,5 @@ if __name__ == "__main__":
         print("未选择窗口")
         exit()
     auto_return = AutoReturn(hwnd)
-    auto_return.escapeHell()
+    auto_return._escapeHell()
 

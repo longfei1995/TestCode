@@ -134,7 +134,7 @@ class DigSeed:
         return False
     
     def selectSeedPos(self, seed_level:int = 1) -> bool:
-        """选择种子位置"""
+        """点击任务追踪中，种子的位置"""
         if seed_level == 1:
             self.keyboard_simulator.mouseClick(845, 404, self.hwnd)
             print(f"正在去[57, 204].....")
@@ -150,7 +150,7 @@ class DigSeed:
         return True
     
     def clickSeedAndPet(self, seed_level:int = 1):
-        """点击果实3次 -> 上坐骑 -> 选择任务框的第二个坐标"""
+        """点击果实3次 && 点击任务追踪宠物坐标"""
         # 点击果实3次
         for i in range(3):
             self.keyboard_simulator.mouseClick(517, 426, self.hwnd)
@@ -172,7 +172,7 @@ class DigSeed:
     
     def clickMiYingLingQuan(self):
         """点击觅影灵券"""
-        # 点击背包栏 -> 点击任务栏 -> 右击任务栏第一格物品
+        # 点击背包栏
         self.keyboard_simulator.mouseClick(755, 779, self.hwnd)
         time.sleep(1)
         # 点击任务栏
@@ -185,7 +185,7 @@ class DigSeed:
             return False
         time.sleep(1)
         
-        # 点击任务栏的第一个坐标
+        # 右击觅影灵券
         pic_mi_yin_ling_qu_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.mi_yin_ling_qu)
         if pic_mi_yin_ling_qu_pos is not None:
             self.keyboard_simulator.mouseClick(pic_mi_yin_ling_qu_pos.x, pic_mi_yin_ling_qu_pos.y, self.hwnd, "right")
