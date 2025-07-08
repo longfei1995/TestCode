@@ -7,12 +7,13 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
 import os
-
+import time
 from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
 from dig_seed import DigSeed
+from auto_return import AutoReturn  # 导入AutoReturn类
 
 
 class UILogStream:
@@ -336,6 +337,81 @@ class DigSeedThread(QThread):
         self.running = False
 
 
+class AutoReturnThread(QThread):
+    """后台运行自动回点的线程"""
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal()
+    
+    def __init__(self, hwnd: int, scene_type: str, x: str, y: str, is_return_immediately: bool, interval_time: int):
+        super().__init__()
+        self.hwnd = hwnd
+        self.scene_type = scene_type
+        self.x = x
+        self.y = y
+        self.is_return_immediately = is_return_immediately
+        self.interval_time = interval_time
+        self.running = True
+        self.original_stdout = None
+    
+    def run(self):
+        try:
+            # 在线程中重定向stdout到UI日志
+            self.original_stdout = sys.stdout
+            sys.stdout = UILogStream(self.log_signal.emit)
+            
+            # 开始自动回点的主要逻辑
+            self.autoReturnProcess()
+        except Exception as e:
+            self.log_signal.emit(f"错误：{str(e)}")
+        finally:
+            # 恢复原始stdout
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+            self.finished_signal.emit()
+    
+    def autoReturnProcess(self):
+        """自动回点的主要逻辑"""
+        print(f"开始自动回点任务...")
+        print(f"场景: {self.scene_type}")
+        print(f"坐标: ({self.x}, {self.y})")
+        print(f"死亡后立即起身: {'是' if self.is_return_immediately else '否'}")
+        print(f"循环间隔: {self.interval_time}秒")
+        
+        # 创建AutoReturn实例
+        auto_return = AutoReturn(self.hwnd)
+        
+        cycle_count = 0
+        while self.running:
+            cycle_count += 1
+            print(f"=== 第 {cycle_count} 轮自动回点开始，休眠时间 {self.interval_time} 秒 ===")
+            
+            try:
+                if self.scene_type == "雪原":
+                    auto_return.toXueYuan(self.x, self.y, self.is_return_immediately)
+                else:
+                    print(f"暂不支持场景: {self.scene_type}")
+                    
+            except Exception as e:
+                print(f"第 {cycle_count} 轮回点出现异常: {str(e)}")
+                if not self.running:
+                    print("检测到停止信号，退出回点循环")
+                    return
+            
+            # 循环间隔等待
+            if self.running:
+                print(f"第 {cycle_count} 轮回点完成，等待 {self.interval_time} 秒后开始下一轮...")
+                for i in range(self.interval_time):
+                    if not self.running:
+                        print("**************等待期间收到停止信号，脚本退出**************")
+                        return
+                    time.sleep(1)
+        
+        print("**************自动回点循环结束**************")
+    
+    def stop(self):
+        self.running = False
+
+
 class GameUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -397,7 +473,14 @@ class GameUI(QMainWindow):
         dig_seed_layout.addWidget(self.createDigSeedLogArea())
         self.tab_widget.addTab(dig_seed_tab, "挖种子")
         
-        # 第三个选项卡：版本历史
+        # 第三个选项卡：自动回点
+        auto_return_tab = QWidget()
+        auto_return_layout = QVBoxLayout(auto_return_tab)
+        auto_return_layout.addWidget(self.createAutoReturnArea())
+        auto_return_layout.addWidget(self.createAutoReturnLogArea())
+        self.tab_widget.addTab(auto_return_tab, "自动回点")
+        
+        # 第四个选项卡：版本历史
         update_log_tab = QWidget()
         update_log_layout = QVBoxLayout(update_log_tab)
         update_log_layout.addWidget(self.createUpdateLogArea())
@@ -609,6 +692,97 @@ class GameUI(QMainWindow):
         
         return log_group
     
+    def createAutoReturnArea(self):
+        """创建自动回点控制区域"""
+        auto_return_group = QGroupBox("自动回点控制")
+        auto_return_layout = QVBoxLayout(auto_return_group)
+        
+        # 1. 场景选择布局
+        scene_layout = QHBoxLayout()
+        scene_layout.addWidget(QLabel("选择场景:"))
+        self.scene_combo = QComboBox()
+        self.scene_combo.addItem("雪原", "雪原")
+        # 可以在这里添加更多场景选项
+        # self.scene_combo.addItem("其他场景", "其他场景")
+        scene_layout.addWidget(self.scene_combo)
+        scene_layout.addStretch()  # 添加弹性空间
+        
+        # 2. 坐标输入布局
+        coord_layout = QHBoxLayout()
+        coord_layout.addWidget(QLabel("X坐标:"))
+        self.x_coord_input = QLineEdit()
+        self.x_coord_input.setText("107")  # 默认值
+        self.x_coord_input.setMaximumWidth(100)
+        coord_layout.addWidget(self.x_coord_input)
+        
+        coord_layout.addWidget(QLabel("Y坐标:"))
+        self.y_coord_input = QLineEdit()
+        self.y_coord_input.setText("109")  # 默认值
+        self.y_coord_input.setMaximumWidth(100)
+        coord_layout.addWidget(self.y_coord_input)
+        coord_layout.addStretch()  # 添加弹性空间
+        
+        # 3. 选项设置布局
+        option_layout = QHBoxLayout()
+        self.return_immediately_checkbox = QCheckBox("死亡后立即起身")
+        option_layout.addWidget(self.return_immediately_checkbox)
+        
+        option_layout.addWidget(QLabel("循环间隔(秒):"))
+        self.return_interval_spinbox = QSpinBox()
+        self.return_interval_spinbox.setRange(1, 3600)
+        self.return_interval_spinbox.setValue(20)  # 默认20秒
+        self.return_interval_spinbox.setSuffix("秒")
+        option_layout.addWidget(self.return_interval_spinbox)
+        option_layout.addStretch()  # 添加弹性空间
+        
+        # 4. 按钮布局
+        button_layout = QHBoxLayout()
+        
+        # 开始按钮
+        self.auto_return_start_btn = QPushButton("开始自动回点")
+        self.auto_return_start_btn.clicked.connect(self.startAutoReturnThread)
+        self.auto_return_start_btn.setEnabled(False)  # 初始状态禁用
+        button_layout.addWidget(self.auto_return_start_btn)
+        
+        # 停止按钮
+        self.auto_return_stop_btn = QPushButton("停止")
+        self.auto_return_stop_btn.clicked.connect(self.stopAutoReturnThread)
+        self.auto_return_stop_btn.setEnabled(False)
+        button_layout.addWidget(self.auto_return_stop_btn)
+        
+        # 5. 说明文字
+        info_string = "使用说明："
+        info_string += "\n1. 确保游戏窗口没有被其他窗口遮挡"
+        info_string += "\n2. F7是珍兽出战，F10是上坐骑"
+        info_label = QLabel(info_string)
+        info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
+        info_label.setWordWrap(True)
+        
+        auto_return_layout.addLayout(scene_layout)
+        auto_return_layout.addLayout(coord_layout)
+        auto_return_layout.addLayout(option_layout)
+        auto_return_layout.addWidget(info_label)
+        auto_return_layout.addLayout(button_layout)
+        
+        return auto_return_group
+    
+    def createAutoReturnLogArea(self):
+        """创建自动回点日志区域"""
+        log_group = QGroupBox("自动回点日志")
+        log_layout = QVBoxLayout(log_group)
+        
+        self.auto_return_log_text = QTextEdit()
+        self.auto_return_log_text.setReadOnly(True)
+        self.auto_return_log_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
+        log_layout.addWidget(self.auto_return_log_text)
+        
+        # 清除日志按钮
+        clear_auto_return_log_btn = QPushButton("清除自动回点日志")
+        clear_auto_return_log_btn.clicked.connect(self.clearAutoReturnLog)
+        log_layout.addWidget(clear_auto_return_log_btn)
+        
+        return log_group
+    
     def createUpdateLogArea(self):
         """创建版本历史区域"""
         update_log_group = QGroupBox("版本历史")
@@ -674,11 +848,13 @@ class GameUI(QMainWindow):
                 self.window_status_label.setStyleSheet("color: green;")
                 self.start_btn.setEnabled(True)
                 self.dig_seed_start_btn.setEnabled(True)  # 同时启用挖种子按钮
+                self.auto_return_start_btn.setEnabled(True)  # 同时启用自动回点按钮
             else:
                 self.window_status_label.setText("当前窗口: 激活失败")
                 self.window_status_label.setStyleSheet("color: red;")
                 self.start_btn.setEnabled(False)
                 self.dig_seed_start_btn.setEnabled(False)
+                self.auto_return_start_btn.setEnabled(False)
                 
         except Exception as e:
             self.addLog(f"激活窗口时出错: {str(e)}")
@@ -848,6 +1024,75 @@ class GameUI(QMainWindow):
                 
         except Exception as e:
             self.update_log_text.setPlainText(f"读取版本历史失败：{str(e)}")
+
+    def startAutoReturnThread(self):
+        """开始自动回点线程"""
+        hwnd = self.hwnd
+        if hwnd == -1:
+            self.addAutoReturnLog("请先选择有效的窗口")
+            return
+        
+        # 从UI获取参数
+        scene_type = self.scene_combo.currentData()
+        x = self.x_coord_input.text().strip()
+        y = self.y_coord_input.text().strip()
+        is_return_immediately = self.return_immediately_checkbox.isChecked()
+        interval_time = self.return_interval_spinbox.value()
+        
+        # 验证参数
+        if not x or not y:
+            self.addAutoReturnLog("请输入有效的X和Y坐标")
+            return
+        
+        try:
+            # 验证坐标是否为数字
+            int(x)
+            int(y)
+        except ValueError:
+            self.addAutoReturnLog("X和Y坐标必须是数字")
+            return
+        
+        # 显示启动信息
+        self.addAutoReturnLog("***************** 自动回点脚本开始启动 *****************")
+        
+        # 创建线程
+        self.auto_return_thread = AutoReturnThread(hwnd, scene_type, x, y, is_return_immediately, interval_time)
+        self.auto_return_thread.log_signal.connect(self.addAutoReturnLog)
+        self.auto_return_thread.finished_signal.connect(self.afterAutoReturnThreadFinished)
+        
+        self.auto_return_start_btn.setEnabled(False)
+        self.auto_return_stop_btn.setEnabled(True)
+        self.activate_btn.setEnabled(False)
+        
+        self.auto_return_thread.start()
+    
+    def stopAutoReturnThread(self):
+        """停止自动回点线程"""
+        if hasattr(self, 'auto_return_thread') and self.auto_return_thread and self.auto_return_thread.isRunning():
+            self.auto_return_thread.stop()
+            self.auto_return_thread.wait()
+    
+    def afterAutoReturnThreadFinished(self):
+        """自动回点线程结束后的处理"""
+        self.auto_return_start_btn.setEnabled(True)
+        self.auto_return_stop_btn.setEnabled(False)
+        self.activate_btn.setEnabled(True)
+    
+    def addAutoReturnLog(self, message: str):
+        """添加自动回点日志信息"""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.auto_return_log_text.append(f"[{timestamp}] {message}")
+        
+        # 自动滚动到底部
+        scrollbar = self.auto_return_log_text.verticalScrollBar()
+        if scrollbar:
+            scrollbar.setValue(scrollbar.maximum())
+    
+    def clearAutoReturnLog(self):
+        """清除自动回点日志"""
+        self.auto_return_log_text.clear()
+        self.addAutoReturnLog("自动回点日志已清除")
 
 
 # 自定义样式

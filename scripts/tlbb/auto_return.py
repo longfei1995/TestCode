@@ -21,6 +21,14 @@ class AutoReturn:
         # 创建DigSeed实例，用于复用其方法
         self.dig_seed_helper = DigSeed(hwnd)
     
+    def _getWindowCenter(self):
+        """动态获取窗口中心坐标"""
+        window_rect = self.window_manager.getWindowRect(self.hwnd)
+        left, top, right, bottom = window_rect
+        center_x = int((right - left) / 2)
+        center_y = int((bottom - top) / 2)
+        return center_x, center_y
+    
     def _moveSceneConfirm(self):
         """移动场景确认 - 使用DigSeed类的方法"""
         return self.dig_seed_helper.moveSceneConfirm()
@@ -33,9 +41,9 @@ class AutoReturn:
         """上马"""
         return self.dig_seed_helper.getUpHorse()
     
-    def _isPersonStop(self):
+    def _isPersonStop(self, max_wait_time=180, threshold=5.0):
         """判断人物是否停止"""
-        return self.dig_seed_helper.isPersonStop()
+        return self.dig_seed_helper.isPersonStop(max_wait_time, threshold)
     
     def _typeNumber(self, number:str):
         """输入数字"""
@@ -77,23 +85,30 @@ class AutoReturn:
     
     def _isInHell(self):
         """判断是否在地府"""
-        # 获取地府图片
-        bbox = self.image_match.getImageBbox(ImagePath.auto_return.di_fu)
+        bbox = self.image_match.getImageBbox(ImagePath.auto_return.di_fu, is_print=False)
         if bbox is not None:
             return True
         return False
     
     def _isInXueYuan(self):
         """判断是否在雪原"""
-        # todo
-        # 获取雪原图片
-        # bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan)
-        # if bbox is not None:
-        #     return True
+        bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan)
+        if bbox is not None:
+            return True
+        return False
+    
+    def _clickChuQiao(self):
+        """点击出窍"""
+        image_center_pos = self.image_match.getImageCenterPos(ImagePath.auto_return.chu_qiao, is_print=False)
+        if image_center_pos is not None:
+            self.keyboard_simulator.mouseClick(image_center_pos.x, image_center_pos.y, self.hwnd)
+            time.sleep(5)
+            return True
         return False
     
     def locateAutoReturn(self, x:str, y:str):
         # 获取自动寻路对话框
+        print(f"开始局部寻路到坐标: ({x}, {y})")
         self.keyboard_simulator.pressKey("`", self.hwnd)
         time.sleep(1)
         bbox = self.image_match.getImageBbox(ImagePath.auto_return.auto_find)
@@ -103,6 +118,7 @@ class AutoReturn:
             x1 = (int)(bbox.left + 44)
             x2 = (int)(bbox.left + 75)
             x3 = (int)(bbox.left + 113)
+            print(f"自动寻路对话框坐标: x输入框({x1}, {y1}), y输入框({x2}, {y2}), 移动按钮({x3}, {y3})")
             # 输入x坐标
             self.keyboard_simulator.mouseClick(x1, y1, self.hwnd)
             self._typeNumber(x)
@@ -114,23 +130,64 @@ class AutoReturn:
             # 点击移动按钮
             self.keyboard_simulator.mouseClick(x3, y3, self.hwnd)
             time.sleep(0.5)
+            print("局部寻路命令已发送")
             return True
         else:
+            print("未找到自动寻路对话框")
             return False
     
-    def toXueYuan(self, is_return_immediately:bool = False):
+    def toXueYuan(self, x:str, y:str, is_return_immediately:bool = False):
         """去雪原"""
-        # todo
         # 如果是立即返回，那么检查是否有确定框
         if is_return_immediately:
-            pass
-            # todo 检查是否存在确定框
+            if self._clickChuQiao():
+                print("点击出窍成功")
         # 如果在地府，那么执行回点流程，否则不做其他动作
         if self._isInHell():
             self._escapeHell()
+            # 上马
+            self._getUpHorse()
+            # 点击世界地图
+            self.keyboard_simulator.pressKey("m", self.hwnd)
+            time.sleep(1)
+            # 点击雪原
+            self.keyboard_simulator.mouseClick(661, 106, self.hwnd)
+            time.sleep(1)
+            # 点击屏幕中心
+            center_x, center_y = self._getWindowCenter()
+            print(f"点击窗口中心坐标: {center_x}, {center_y}")
+            self.keyboard_simulator.mouseClick(center_x, center_y, self.hwnd)
+            time.sleep(1)
+            # 点击场景确认框
+            self._moveSceneConfirm()
+            time.sleep(1)
+            # 点击esc
+            self.keyboard_simulator.pressKey("esc", self.hwnd)
+            time.sleep(1)
+            # 等待人物静止
+            self._isPersonStop(max_wait_time=300)
+            # 局部寻路到指定坐标
+            self.locateAutoReturn(x, y)
+            # 等待人物静止
+            self._isPersonStop(max_wait_time=100)
+            # 按键盘esc
+            self.keyboard_simulator.pressKey("esc", self.hwnd)
+            time.sleep(1)
+            # 下马
+            self._getDownHorse()
+            time.sleep(1)
+            # 召唤宠物
+            self.keyboard_simulator.pressKey("f7", self.hwnd)
+            time.sleep(1)
+            # 开始战斗
+            self.keyboard_simulator.pressKey("l", self.hwnd)
+            time.sleep(1)
         else:
-            pass
-
+            print("当前人物不在地府")
+            if self._isInXueYuan():
+                print("当前人物在雪原, 不做任何动作")
+            else:
+                print("当前人物不在雪原")
 
 if __name__ == "__main__":
     window_manager = WindowManager()
@@ -138,6 +195,6 @@ if __name__ == "__main__":
     if hwnd is None:
         print("未选择窗口")
         exit()
-    auto_return = AutoReturn(hwnd)
-    auto_return._escapeHell()
+    keyboard_simulator = KeyboardSimulator()
+    keyboard_simulator.pressKey("l", hwnd)
 
