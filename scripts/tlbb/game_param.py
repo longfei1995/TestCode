@@ -44,7 +44,11 @@ class ImagePath:
         meng_po: str = os.path.join(kPicDir, "auto_return\\3.png")
         da_li: str = os.path.join(kPicDir, "auto_return\\4.png")
         xue_yuan: str = os.path.join(kPicDir, "auto_return\\5.png")
-        chu_qiao: str = os.path.join(kPicDir, "auto_return\\6.png")
+        chu_qiao: str = os.path.join(kPicDir, "auto_return\\6.png")     # 出窍按钮
+        si_xiang: str = os.path.join(kPicDir, "auto_return\\7.png")      # 四象天门阵场景
+        hui_yi: str = os.path.join(kPicDir, "auto_return\\8.png")      # 回营按钮
+        qian_wang_ji_tan: str = os.path.join(kPicDir, "auto_return\\9.png")      # 前往祭坛按钮
+        
     class kun_wu:
         cheng_huang: str = os.path.join(kPicDir, "kun_wu\\1.png")
         ti_jiao_ling_yao: str = os.path.join(kPicDir, "kun_wu\\7.png")

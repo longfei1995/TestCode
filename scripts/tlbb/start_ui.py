@@ -388,6 +388,12 @@ class AutoReturnThread(QThread):
             try:
                 if self.scene_type == "雪原":
                     auto_return.toXueYuan(self.x, self.y, self.is_return_immediately)
+                elif self.scene_type == "四象":
+                    # 上马
+                    if cycle_count == 1:
+                        auto_return._getUpHorse()
+                        time.sleep(1)
+                    auto_return.toSiXiang()
                 else:
                     print(f"暂不支持场景: {self.scene_type}")
                     
@@ -702,20 +708,24 @@ class GameUI(QMainWindow):
         scene_layout.addWidget(QLabel("选择场景:"))
         self.scene_combo = QComboBox()
         self.scene_combo.addItem("雪原", "雪原")
+        self.scene_combo.addItem("四象回点", "四象")
         # 可以在这里添加更多场景选项
         # self.scene_combo.addItem("其他场景", "其他场景")
+        self.scene_combo.currentTextChanged.connect(self.onSceneChanged)
         scene_layout.addWidget(self.scene_combo)
         scene_layout.addStretch()  # 添加弹性空间
         
         # 2. 坐标输入布局
         coord_layout = QHBoxLayout()
-        coord_layout.addWidget(QLabel("X坐标:"))
+        self.x_coord_label = QLabel("X坐标:")
+        coord_layout.addWidget(self.x_coord_label)
         self.x_coord_input = QLineEdit()
         self.x_coord_input.setText("107")  # 默认值
         self.x_coord_input.setMaximumWidth(100)
         coord_layout.addWidget(self.x_coord_input)
         
-        coord_layout.addWidget(QLabel("Y坐标:"))
+        self.y_coord_label = QLabel("Y坐标:")
+        coord_layout.addWidget(self.y_coord_label)
         self.y_coord_input = QLineEdit()
         self.y_coord_input.setText("109")  # 默认值
         self.y_coord_input.setMaximumWidth(100)
@@ -1039,18 +1049,19 @@ class GameUI(QMainWindow):
         is_return_immediately = self.return_immediately_checkbox.isChecked()
         interval_time = self.return_interval_spinbox.value()
         
-        # 验证参数
-        if not x or not y:
-            self.addAutoReturnLog("请输入有效的X和Y坐标")
-            return
-        
-        try:
-            # 验证坐标是否为数字
-            int(x)
-            int(y)
-        except ValueError:
-            self.addAutoReturnLog("X和Y坐标必须是数字")
-            return
+        # 验证参数 - 只有非四象场景才需要验证坐标
+        if scene_type != "四象":
+            if not x or not y:
+                self.addAutoReturnLog("请输入有效的X和Y坐标")
+                return
+            
+            try:
+                # 验证坐标是否为数字
+                int(x)
+                int(y)
+            except ValueError:
+                self.addAutoReturnLog("X和Y坐标必须是数字")
+                return
         
         # 显示启动信息
         self.addAutoReturnLog("***************** 自动回点脚本开始启动 *****************")
@@ -1093,6 +1104,24 @@ class GameUI(QMainWindow):
         """清除自动回点日志"""
         self.auto_return_log_text.clear()
         self.addAutoReturnLog("自动回点日志已清除")
+    
+    def onSceneChanged(self, scene_text):
+        """场景选择变化时的处理"""
+        scene_data = self.scene_combo.currentData()
+        if scene_data == "四象":
+            # 四象回点不需要坐标，隐藏坐标输入框
+            self.x_coord_label.setVisible(False)
+            self.x_coord_input.setVisible(False)
+            self.y_coord_label.setVisible(False)
+            self.y_coord_input.setVisible(False)
+            self.return_immediately_checkbox.setVisible(False)
+        else:
+            # 其他场景需要坐标，显示坐标输入框
+            self.x_coord_label.setVisible(True)
+            self.x_coord_input.setVisible(True)
+            self.y_coord_label.setVisible(True)
+            self.y_coord_input.setVisible(True)
+            self.return_immediately_checkbox.setVisible(True)
 
 
 # 自定义样式

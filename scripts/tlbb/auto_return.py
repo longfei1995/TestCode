@@ -92,7 +92,14 @@ class AutoReturn:
     
     def _isInXueYuan(self):
         """判断是否在雪原"""
-        bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan)
+        bbox = self.image_match.getImageBbox(ImagePath.auto_return.xue_yuan, is_print=False)
+        if bbox is not None:
+            return True
+        return False
+    
+    def _isInSiXiang(self):
+        """判断是否在四象天门阵"""
+        bbox = self.image_match.getImageBbox(ImagePath.auto_return.si_xiang, is_print=False)
         if bbox is not None:
             return True
         return False
@@ -103,6 +110,24 @@ class AutoReturn:
         if image_center_pos is not None:
             self.keyboard_simulator.mouseClick(image_center_pos.x, image_center_pos.y, self.hwnd)
             time.sleep(5)
+            return True
+        return False
+    
+    def _clickHuiYi(self):
+        """点击回营"""
+        image_center_pos = self.image_match.getImageCenterPos(ImagePath.auto_return.hui_yi, is_print=False)
+        if image_center_pos is not None:
+            self.keyboard_simulator.mouseClick(image_center_pos.x, image_center_pos.y, self.hwnd)
+            time.sleep(3)
+            return True
+        return False
+    
+    def _clickQianWangJiTan(self):
+        """点击前往祭坛"""
+        image_center_pos = self.image_match.getImageCenterPos(ImagePath.auto_return.qian_wang_ji_tan, is_print=False)
+        if image_center_pos is not None:
+            self.keyboard_simulator.mouseClick(image_center_pos.x, image_center_pos.y, self.hwnd)
+            time.sleep(3)
             return True
         return False
     
@@ -188,6 +213,20 @@ class AutoReturn:
                 print("当前人物在雪原, 不做任何动作")
             else:
                 print("当前人物不在雪原")
+                
+    def toSiXiang(self):
+        """去四象天门阵"""
+        if self._isInSiXiang():
+            print("当前人物在四象天门阵.....")
+            if self._clickHuiYi():
+                print("点击回营成功")
+                # 上马
+                self._getUpHorse()
+                time.sleep(1)
+            # 点击前往祭坛
+            self._clickQianWangJiTan()
+        else:
+            print("当前人物不在四象天门阵")
 
 if __name__ == "__main__":
     window_manager = WindowManager()
@@ -195,6 +234,6 @@ if __name__ == "__main__":
     if hwnd is None:
         print("未选择窗口")
         exit()
-    keyboard_simulator = KeyboardSimulator()
-    keyboard_simulator.pressKey("l", hwnd)
+    auto_return = AutoReturn(hwnd)
+    auto_return.toSiXiang()
 
