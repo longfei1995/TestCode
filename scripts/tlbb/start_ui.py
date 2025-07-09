@@ -1121,6 +1121,24 @@ def main():
         app.setStyleSheet(stylesheet)
         print("样式文件加载成功")
     
+    # 许可证检查 - 在显示主界面前验证授权
+    try:
+        from license_dialog import LicenseDialog
+        
+        # 检查授权状态，如果未授权则显示激活对话框
+        is_authorized = LicenseDialog.checkAndShowLicense()
+        
+        if not is_authorized:
+            print("软件未授权，程序将退出")
+            sys.exit(0)
+            
+    except ImportError:
+        print("警告：许可证检查模块未找到，跳过授权验证")
+    except Exception as e:
+        print(f"许可证检查时出错: {e}")
+        # 可以选择是否继续运行
+        # sys.exit(1)  # 取消注释此行以在授权检查失败时退出
+    
     window = GameUI()
     window.show()
     

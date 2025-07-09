@@ -58,6 +58,8 @@ a = Analysis(
         'dig_seed',  # 新增的挖种子模块
         'img_match',  # 图像匹配模块
         'auto_return',  # 自动回点模块
+        'license_manager',  # 许可证管理模块
+        'license_dialog',   # 许可证对话框模块
     ],
     hookspath=[],
     hooksconfig={},
