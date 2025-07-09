@@ -1,6 +1,6 @@
 """
 许可证管理模块
-实现软件授权、试用期、硬件绑定等功能
+实现软件授权、硬件绑定等功能
 """
 import hashlib
 import hmac
@@ -26,8 +26,6 @@ class LicenseManager:
         """
         self.secret_key = secret_key.encode('utf-8')
         self.license_file = "license.dat"
-        self.trial_file = "trial.dat"
-        self.trial_days = 1  # 试用期天数
     
     def get_hardware_id(self) -> str:
         """
@@ -236,94 +234,23 @@ class LicenseManager:
             print(f"加载许可证时出错: {e}")
             return None
     
-    def start_trial(self) -> bool:
-        """
-        开始试用期
-        
-        Returns:
-            是否开始成功
-        """
-        try:
-            if os.path.exists(self.trial_file):
-                return False  # 试用期已经开始过了
-            
-            trial_data = {
-                "start_date": datetime.now().isoformat(),
-                "hardware_id": self.get_hardware_id()
-            }
-            
-            # 加密保存试用信息
-            trial_json = json.dumps(trial_data)
-            encrypted_trial = base64.b64encode(trial_json.encode('utf-8')).decode('utf-8')
-            
-            with open(self.trial_file, 'w') as f:
-                f.write(encrypted_trial)
-            
-            return True
-        except Exception as e:
-            print(f"开始试用期时出错: {e}")
-            return False
-    
-    def check_trial_status(self) -> Tuple[bool, int, str]:
-        """
-        检查试用期状态
-        
-        Returns:
-            (试用期是否有效, 剩余天数, 状态信息)
-        """
-        try:
-            if not os.path.exists(self.trial_file):
-                return False, 0, "试用期未开始"
-            
-            with open(self.trial_file, 'r') as f:
-                encrypted_trial = f.read().strip()
-            
-            # 解密试用信息
-            trial_json = base64.b64decode(encrypted_trial.encode('utf-8')).decode('utf-8')
-            trial_data = json.loads(trial_json)
-            
-            # 验证硬件ID（防止复制试用文件到其他电脑）
-            if trial_data.get("hardware_id") != self.get_hardware_id():
-                return False, 0, "试用期验证失败"
-            
-            # 计算剩余天数
-            start_date = datetime.fromisoformat(trial_data["start_date"])
-            end_date = start_date + timedelta(days=self.trial_days)
-            remaining_days = (end_date - datetime.now()).days
-            
-            if remaining_days > 0:
-                return True, remaining_days, f"试用期剩余 {remaining_days} 天"
-            else:
-                return False, 0, "试用期已过期"
-                
-        except Exception as e:
-            print(f"检查试用期时出错: {e}")
-            return False, 0, "试用期检查失败"
-    
     def is_authorized(self) -> Tuple[bool, str]:
         """
-        检查软件是否已授权（许可证或试用期）
+        检查软件是否已授权
         
         Returns:
             (是否已授权, 状态信息)
         """
-        # 首先检查许可证
+        # 检查许可证
         license_key = self.load_license()
         if license_key:
             is_valid, message = self.validate_license_key(license_key)
             if is_valid:
                 return True, f"✓ 已授权 - {message}"
+            else:
+                return False, f"✗ 许可证无效 - {message}"
         
-        # 然后检查试用期
-        trial_valid, remaining_days, trial_message = self.check_trial_status()
-        if trial_valid:
-            return True, f"✓ 试用期 - {trial_message}"
-        
-        # 检查是否可以开始试用
-        if not os.path.exists(self.trial_file):
-            return False, "需要激活许可证或开始试用期"
-        
-        return False, f"✗ 未授权 - {trial_message}"
+        return False, "✗ 未授权 - 需要输入有效的许可证密钥"
 
 
 def generate_license_for_hardware(hardware_id: str, days: int = 365, user_info: str = "Licensed User") -> str:

@@ -1,11 +1,11 @@
 """
 许可证激活对话框
-用户界面部分，处理许可证输入和试用申请
+用户界面部分，处理许可证输入
 """
 import sys
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                             QLineEdit, QPushButton, QTextEdit, QGroupBox,
-                            QMessageBox, QRadioButton, QButtonGroup)
+                            QMessageBox)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QIcon, QPixmap
 import os
@@ -27,7 +27,7 @@ class LicenseDialog(QDialog):
     def initUI(self):
         """初始化用户界面"""
         self.setWindowTitle('软件激活 - 天龙八部助手')
-        self.setFixedSize(500, 600)
+        self.setFixedSize(500, 500)
         self.setModal(True)
         
         # 设置窗口图标
@@ -39,7 +39,7 @@ class LicenseDialog(QDialog):
         main_layout = QVBoxLayout(self)
         
         # 标题
-        title_label = QLabel("软件激活")
+        title_label = QLabel("软件激活，纯免费软件，仅供自己使用！")
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -62,23 +62,6 @@ class LicenseDialog(QDialog):
         hardware_layout.addWidget(copy_btn)
         
         main_layout.addWidget(hardware_group)
-        
-        # 激活方式选择
-        activation_group = QGroupBox("选择激活方式")
-        activation_layout = QVBoxLayout(activation_group)
-        
-        self.activation_group = QButtonGroup(self)
-        
-        self.license_radio = QRadioButton("使用许可证密钥激活")
-        self.license_radio.setChecked(True)
-        self.activation_group.addButton(self.license_radio, 0)
-        activation_layout.addWidget(self.license_radio)
-        
-        self.trial_radio = QRadioButton("开始7天免费试用")
-        self.activation_group.addButton(self.trial_radio, 1)
-        activation_layout.addWidget(self.trial_radio)
-        
-        main_layout.addWidget(activation_group)
         
         # 许可证输入区域
         license_group = QGroupBox("许可证密钥")
@@ -122,9 +105,8 @@ class LicenseDialog(QDialog):
         # 说明文字
         info_text = QLabel(
             "说明:\n"
-            "• 购买许可证请联系软件作者\n"
-            "• 试用期为7天，每台电脑只能试用一次\n"
-            "• 许可证与设备硬件绑定，无法转移到其他电脑"
+            "• 请提供上方的设备ID给作者以获取许可证\n"
+            "• 软件非商业软件，仅供作者及好友娱乐，不收取任何费用，不得用于任何商业用途.\n"
         )
         info_text.setStyleSheet("color: #666; font-size: 11px; padding: 10px;")
         info_text.setWordWrap(True)
@@ -134,8 +116,10 @@ class LicenseDialog(QDialog):
         """复制硬件ID到剪贴板"""
         try:
             from PyQt5.QtWidgets import QApplication
-            QApplication.clipboard().setText(self.hardware_id)
-            QMessageBox.information(self, "提示", "设备ID已复制到剪贴板")
+            clipboard = QApplication.clipboard()
+            if clipboard:
+                clipboard.setText(self.hardware_id)
+                QMessageBox.information(self, "提示", "设备ID已复制到剪贴板")
         except Exception as e:
             QMessageBox.warning(self, "错误", f"复制失败: {str(e)}")
     
@@ -161,39 +145,24 @@ class LicenseDialog(QDialog):
     def activateSoftware(self):
         """激活软件"""
         try:
-            if self.license_radio.isChecked():
-                # 使用许可证激活
-                license_key = self.license_input.toPlainText().strip()
-                if not license_key:
-                    QMessageBox.warning(self, "错误", "请输入许可证密钥")
-                    return
-                
-                # 验证许可证
-                is_valid, message = self.license_manager.validate_license_key(license_key)
-                
-                if is_valid:
-                    # 保存许可证
-                    if self.license_manager.save_license(license_key):
-                        QMessageBox.information(self, "成功", f"许可证激活成功!\n\n{message}")
-                        self.accept()
-                    else:
-                        QMessageBox.warning(self, "错误", "许可证保存失败")
-                else:
-                    QMessageBox.warning(self, "激活失败", message)
-                    
-            else:
-                # 开始试用期
-                if self.license_manager.start_trial():
-                    QMessageBox.information(self, "成功", "试用期已开始!\n您有7天的免费试用时间。")
+            # 使用许可证激活
+            license_key = self.license_input.toPlainText().strip()
+            if not license_key:
+                QMessageBox.warning(self, "错误", "请输入许可证密钥")
+                return
+            
+            # 验证许可证
+            is_valid, message = self.license_manager.validate_license_key(license_key)
+            
+            if is_valid:
+                # 保存许可证
+                if self.license_manager.save_license(license_key):
+                    QMessageBox.information(self, "成功", f"许可证激活成功!\n\n{message}")
                     self.accept()
                 else:
-                    # 检查是否已经用过试用期
-                    trial_valid, remaining_days, trial_message = self.license_manager.check_trial_status()
-                    if not trial_valid and remaining_days == 0:
-                        QMessageBox.warning(self, "无法开始试用", 
-                                          "此设备的试用期已过期。\n请购买许可证来继续使用软件。")
-                    else:
-                        QMessageBox.warning(self, "错误", "无法开始试用期")
+                    QMessageBox.warning(self, "错误", "许可证保存失败")
+            else:
+                QMessageBox.warning(self, "激活失败", message)
                         
         except Exception as e:
             QMessageBox.critical(self, "错误", f"激活过程中发生错误:\n{str(e)}")
