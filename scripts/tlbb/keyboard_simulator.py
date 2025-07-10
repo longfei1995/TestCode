@@ -178,7 +178,7 @@ class KeyboardSimulator:
             # 移动鼠标到标题栏并点击
             win32api.SetCursorPos((title_bar_x, title_bar_y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-            time.sleep(0.05)  # 减少单次点击持续时间
+            time.sleep(0.1)  # 减少单次点击持续时间
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
             time.sleep(0.3)  # 减少等待窗口焦点时间，但保持足够安全
             
@@ -204,7 +204,7 @@ class KeyboardSimulator:
             
             # 执行鼠标点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.05)  # 减少单次点击持续时间
+            time.sleep(0.1)  # 减少单次点击持续时间
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             return True
@@ -249,7 +249,7 @@ class KeyboardSimulator:
             # 移动鼠标到标题栏并点击
             win32api.SetCursorPos((title_bar_x, title_bar_y))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-            time.sleep(0.05)  # 减少单次点击持续时间
+            time.sleep(0.1)  # 减少单次点击持续时间
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
             time.sleep(0.3)  # 减少等待窗口焦点时间
             
@@ -275,15 +275,15 @@ class KeyboardSimulator:
             
             # 执行第一次点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.03) # 20ms
+            time.sleep(0.1) # 20ms
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             # 双击间隔时间（较短，模拟真实双击）
-            time.sleep(0.15)  # 缩短双击间隔，更真实
+            time.sleep(0.18)  # 缩短双击间隔，更真实
             
             # 执行第二次点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.03) # 20ms
+            time.sleep(0.1) # 20ms
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             return True
