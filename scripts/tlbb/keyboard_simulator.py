@@ -279,7 +279,7 @@ class KeyboardSimulator:
             win32api.mouse_event(up_flag, 0, 0, 0, 0)
             
             # 双击间隔时间（较短，模拟真实双击）
-            time.sleep(0.05)  # 缩短双击间隔，更真实
+            time.sleep(0.15)  # 缩短双击间隔，更真实
             
             # 执行第二次点击
             win32api.mouse_event(down_flag, 0, 0, 0, 0)
