@@ -33,15 +33,26 @@ class DigSeed:
         time.sleep(7)
         return True
     
-    def moveSceneConfirm(self):
-        """移动场景确认"""
-        pic_move_scene_confirm_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.move_scene_confirm)
-        if pic_move_scene_confirm_pos is not None:
-            self.keyboard_simulator.mouseClick(pic_move_scene_confirm_pos.x, pic_move_scene_confirm_pos.y, self.hwnd)
-            print(f"点击场景确认框完成....")
-        else:
-            print("未找到场景确认框")
-            return False
+    def moveSceneConfirm(self, max_retries:int = 3, retry_interval:float = 1.0):
+        """移动场景确认 - 添加重试机制"""
+        for attempt in range(max_retries):
+            pic_move_scene_confirm_pos = self.image_match.getImageCenterPos(
+                ImagePath.kun_wu.move_scene_confirm,
+                max_retries=2,  # 图像识别内部也有重试
+                retry_interval=0.3
+            )
+            if pic_move_scene_confirm_pos is not None:
+                self.keyboard_simulator.mouseClick(pic_move_scene_confirm_pos.x, pic_move_scene_confirm_pos.y, self.hwnd)
+                print(f"点击场景确认框完成....")
+                return True
+            else:
+                if attempt < max_retries - 1:
+                    print(f"第{attempt + 1}次未找到场景确认框，{retry_interval}秒后重试...")
+                    time.sleep(retry_interval)
+                    continue
+        
+        print("未找到场景确认框")
+        return False
     
     def selectSeedTask(self, seed_level:int = 1) -> bool:
         """选择种子任务"""
@@ -170,31 +181,48 @@ class DigSeed:
             return False
         return True
     
-    def clickMiYingLingQuan(self):
-        """点击觅影灵券"""
-        # 点击背包栏
-        self.keyboard_simulator.mouseClick(755, 779, self.hwnd)
-        time.sleep(1)
-        # 点击任务栏
-        pic_ren_wu_button_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.ren_wu_button)
-        if pic_ren_wu_button_pos is not None:
-            self.keyboard_simulator.mouseClick(pic_ren_wu_button_pos.x, pic_ren_wu_button_pos.y, self.hwnd)
-            print(f"点击任务栏完成....")
-        else:
-            print("未找到任务栏")
-            return False
-        time.sleep(1)
+    def clickMiYingLingQuan(self, max_retries:int = 3, retry_interval:float = 1.0):
+        """点击觅影灵券 - 添加重试机制"""
+        for attempt in range(max_retries):
+            # 点击背包栏
+            self.keyboard_simulator.mouseClick(755, 779, self.hwnd)
+            time.sleep(1)
+            
+            # 点击任务栏
+            pic_ren_wu_button_pos = self.image_match.getImageCenterPos(
+                ImagePath.kun_wu.ren_wu_button,
+                max_retries=2,
+                retry_interval=0.3
+            )
+            if pic_ren_wu_button_pos is not None:
+                self.keyboard_simulator.mouseClick(pic_ren_wu_button_pos.x, pic_ren_wu_button_pos.y, self.hwnd)
+                print(f"点击任务栏完成....")
+                time.sleep(1)
+                
+                # 右击觅影灵券
+                pic_mi_yin_ling_qu_pos = self.image_match.getImageCenterPos(
+                    ImagePath.kun_wu.mi_yin_ling_qu,
+                    max_retries=2,
+                    retry_interval=0.3
+                )
+                if pic_mi_yin_ling_qu_pos is not None:
+                    self.keyboard_simulator.mouseClick(pic_mi_yin_ling_qu_pos.x, pic_mi_yin_ling_qu_pos.y, self.hwnd, "right")
+                    print(f"右击觅影灵券完成....")
+                    time.sleep(1)
+                    return True
+                else:
+                    if attempt < max_retries - 1:
+                        print(f"第{attempt + 1}次未找到觅影灵券，{retry_interval}秒后重试...")
+                        time.sleep(retry_interval)
+                        continue
+            else:
+                if attempt < max_retries - 1:
+                    print(f"第{attempt + 1}次未找到任务栏，{retry_interval}秒后重试...")
+                    time.sleep(retry_interval)
+                    continue
         
-        # 右击觅影灵券
-        pic_mi_yin_ling_qu_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.mi_yin_ling_qu)
-        if pic_mi_yin_ling_qu_pos is not None:
-            self.keyboard_simulator.mouseClick(pic_mi_yin_ling_qu_pos.x, pic_mi_yin_ling_qu_pos.y, self.hwnd, "right")
-            print(f"右击觅影灵券完成....")
-        else:
-            print("未找到觅影灵券")
-            return False
-        time.sleep(1)
-        return True
+        print("未找到觅影灵券")
+        return False
     
     def digSeed(self, seed_level:int = 1, is_dig_seed:bool = True) -> bool:
         """挖种子"""
@@ -202,14 +230,32 @@ class DigSeed:
         # 上坐骑
         if not self.getUpHorse():
             return False
-        # 双击乘黄长老
+        # 双击乘黄长老 - 添加重试机制
         self.keyboard_simulator.pressKey('`', self.hwnd)
         time.sleep(1)
-        pic_cheng_huang_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.cheng_huang)
-        if pic_cheng_huang_pos is not None:
-            self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
-            print(f"双击乘黄长老完成....")
-        else:
+        
+        cheng_huang_success = False
+        for attempt in range(3):
+            pic_cheng_huang_pos = self.image_match.getImageCenterPos(
+                ImagePath.kun_wu.cheng_huang,
+                max_retries=2,
+                retry_interval=0.3
+            )
+            if pic_cheng_huang_pos is not None:
+                self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
+                print(f"双击乘黄长老完成....")
+                cheng_huang_success = True
+                break
+            else:
+                if attempt < 2:
+                    print(f"第{attempt + 1}次未找到乘黄长老，重新打开自动寻路后重试...")
+                    self.keyboard_simulator.pressKey('esc', self.hwnd)
+                    time.sleep(0.5)
+                    self.keyboard_simulator.pressKey('`', self.hwnd)
+                    time.sleep(1.0)
+                    continue
+        
+        if not cheng_huang_success:
             print("自动寻路里未找到乘黄长老")
             return False
         time.sleep(2)
@@ -238,12 +284,26 @@ class DigSeed:
             # 下坐骑
             if not self.getDownHorse():
                 return False
-            # 点击提交灵药
-            pic_ti_jiao_ling_yao_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.ti_jiao_ling_yao)
-            if pic_ti_jiao_ling_yao_pos is not None:
-                self.keyboard_simulator.mouseClick(pic_ti_jiao_ling_yao_pos.x, pic_ti_jiao_ling_yao_pos.y, self.hwnd)
-                print(f"点击提交灵药完成....")
-            else:
+            # 点击提交灵药 - 添加重试机制
+            submit_success = False
+            for attempt in range(3):
+                pic_ti_jiao_ling_yao_pos = self.image_match.getImageCenterPos(
+                    ImagePath.kun_wu.ti_jiao_ling_yao,
+                    max_retries=2,
+                    retry_interval=0.3
+                )
+                if pic_ti_jiao_ling_yao_pos is not None:
+                    self.keyboard_simulator.mouseClick(pic_ti_jiao_ling_yao_pos.x, pic_ti_jiao_ling_yao_pos.y, self.hwnd)
+                    print(f"点击提交灵药完成....")
+                    submit_success = True
+                    break
+                else:
+                    if attempt < 2:
+                        print(f"第{attempt + 1}次未找到提交灵药，1秒后重试...")
+                        time.sleep(1.0)
+                        continue
+            
+            if not submit_success:
                 print("未找到提交灵药")
                 return False
             time.sleep(1)
@@ -295,11 +355,30 @@ class DigSeed:
         ## 通用流程 点击乘黄长老 -> 点击左侧任务 -> 点击完成
         self.keyboard_simulator.pressKey('`', self.hwnd)
         time.sleep(1)
-        pic_cheng_huang_pos = self.image_match.getImageCenterPos(ImagePath.kun_wu.cheng_huang)
-        if pic_cheng_huang_pos is not None:
-            self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
-            print(f"双击乘黄长老完成....")
-        else:
+        
+        # 双击乘黄长老完成任务 - 添加重试机制
+        final_cheng_huang_success = False
+        for attempt in range(3):
+            pic_cheng_huang_pos = self.image_match.getImageCenterPos(
+                ImagePath.kun_wu.cheng_huang,
+                max_retries=2,
+                retry_interval=0.3
+            )
+            if pic_cheng_huang_pos is not None:
+                self.keyboard_simulator.mouseDoubleClick(pic_cheng_huang_pos.x, pic_cheng_huang_pos.y, self.hwnd)
+                print(f"双击乘黄长老完成....")
+                final_cheng_huang_success = True
+                break
+            else:
+                if attempt < 2:
+                    print(f"第{attempt + 1}次未找到乘黄长老，重新打开自动寻路后重试...")
+                    self.keyboard_simulator.pressKey('esc', self.hwnd)
+                    time.sleep(0.5)
+                    self.keyboard_simulator.pressKey('`', self.hwnd)
+                    time.sleep(1.0)
+                    continue
+        
+        if not final_cheng_huang_success:
             print("未找到乘黄长老")
             return False
         time.sleep(2)

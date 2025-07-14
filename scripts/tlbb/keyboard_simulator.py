@@ -7,6 +7,7 @@ import os
 import tempfile
 from typing import Union, List
 from pathlib import Path
+import msvcrt
 
 class KeyboardSimulator:
     """键盘模拟器"""
@@ -58,54 +59,100 @@ class KeyboardSimulator:
         # 初始化鼠标锁相关属性
         self.lock_file = Path(tempfile.gettempdir()) / "tlbb_mouse_lock.txt"
         self.lock_timeout = 10  # 10秒超时
+        self.lock_file_handle = None  # 锁文件句柄
     
     def _getMouseLock(self) -> bool:
-        """获取鼠标锁 - 一直等待直到获取成功
+        """获取鼠标锁 - 使用文件独占锁定机制确保原子性
         Returns:
             bool: 总是返回True（一直等待直到获取成功）
         """
         while True:  # 无限循环，直到获取到锁
-            if not self.lock_file.exists():
-                # 锁文件不存在，尝试创建
-                try:
-                    with open(self.lock_file, 'w') as f:
-                        f.write(str(time.time()))
-                    return True
-                except Exception:
-                    time.sleep(0.05)  # 创建失败，短暂等待后重试
+            try:
+                # 尝试以独占方式创建锁文件
+                # 使用 'x' 模式：独占创建，如果文件已存在则失败
+                lock_file_handle = open(str(self.lock_file), 'x')
+                
+                # 成功创建文件，获取了锁
+                self.lock_file_handle = lock_file_handle
+                
+                # 写入时间戳
+                lock_file_handle.write(str(time.time()))
+                lock_file_handle.flush()
+                
+                print(f"[鼠标锁] 成功获取锁 - 进程ID: {os.getpid()}")
+                return True
+                
+            except FileExistsError:
+                # 文件已存在，说明锁被其他进程占用
+                print(f"[鼠标锁] 锁被占用，等待释放 - 进程ID: {os.getpid()}")
+                # 检查锁是否超时
+                if self._checkLockTimeout():
+                    continue  # 锁已释放，重新尝试获取
+                else:
+                    time.sleep(0.1)  # 等待一段时间后重试
                     continue
-            else:
-                # 锁文件存在，检查是否超时
-                try:
-                    with open(self.lock_file, 'r') as f:
-                        lock_time_str = f.read().strip()
-                        if lock_time_str:
-                            lock_time = float(lock_time_str)
-                        else:
-                            # 空文件，删除重试
-                            self._releaseMouseLock()
-                            continue
                     
-                    current_time = time.time()
-                    if current_time - lock_time > self.lock_timeout:
-                        # 超时，强制释放锁
-                        print(f"检测到鼠标锁超时（{self.lock_timeout}秒），强制释放锁")
-                        self._releaseMouseLock()
-                        continue
-                    else:
-                        # 锁未超时，等待
-                        time.sleep(0.1)  # 稍微增加等待间隔，减少CPU占用
-                        continue
-                except Exception:
-                    # 读取失败，可能文件损坏，删除重试
-                    self._releaseMouseLock()
-                    continue
+            except Exception:
+                # 其他错误，短暂等待后重试
+                time.sleep(0.05)
+                continue
+    
+    def _checkLockTimeout(self) -> bool:
+        """检查锁是否超时，如果超时则强制释放
+        Returns:
+            bool: True表示锁已释放，False表示锁仍有效
+        """
+        try:
+            if not self.lock_file.exists():
+                return True
+            
+            # 读取锁文件中的时间戳
+            with open(self.lock_file, 'r') as f:
+                lock_time_str = f.read().strip()
+                if not lock_time_str:
+                    # 空文件，强制删除
+                    self._forceReleaseLock()
+                    return True
+                    
+                lock_time = float(lock_time_str)
+                current_time = time.time()
+                
+                if current_time - lock_time > self.lock_timeout:
+                    print(f"[鼠标锁] 检测到锁超时（{self.lock_timeout}秒），强制释放 - 进程ID: {os.getpid()}")
+                    self._forceReleaseLock()
+                    return True
+                    
+            return False
+            
+        except Exception:
+            # 读取失败，可能文件损坏，强制释放
+            self._forceReleaseLock()
+            return True
+    
+    def _forceReleaseLock(self):
+        """强制释放锁文件"""
+        try:
+            if self.lock_file.exists():
+                # 尝试删除锁文件
+                os.remove(str(self.lock_file))
+                print(f"[鼠标锁] 强制释放锁文件成功 - 进程ID: {os.getpid()}")
+        except Exception:
+            pass  # 删除失败也没关系，可能已被其他进程删除
     
     def _releaseMouseLock(self) -> None:
         """释放鼠标锁"""
         try:
+            if self.lock_file_handle:
+                self.lock_file_handle.close()
+                self.lock_file_handle = None
+        except Exception:
+            pass  # 关闭失败不影响程序运行
+        
+        # 删除锁文件
+        try:
             if self.lock_file.exists():
-                self.lock_file.unlink()
+                os.remove(str(self.lock_file))
+                print(f"[鼠标锁] 释放锁成功 - 进程ID: {os.getpid()}")
         except Exception:
             pass  # 删除失败不影响程序运行
     
