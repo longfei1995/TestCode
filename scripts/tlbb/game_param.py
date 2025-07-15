@@ -97,10 +97,12 @@ class PhotoConfig:
 
 @dataclass
 class DefaultKeyConfig:
-    pet_attack: str = "F7"
-    pet_eat: str = "F8"
-    xue_ji: str = "F9"
-    qing_xin: str = "F10"
+    pet_attack: str = "F5"
+    pet_eat: str = "F6"
+    xue_ji: str = "F7"
+    qing_xin: str = "F8"
+    ding_wei_fu: str = "F9"
+    horse: str = "F10"
 
 # 创建实例
 kHPBar = HPBarConfig()

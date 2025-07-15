@@ -66,7 +66,6 @@ class RaidThread(QThread):
             
     def autoKeyPress(self, hwnd: int):
         """自动按键的主要逻辑"""
-        import time  # 将time导入移到函数开头
         color_detector = ColorDetector()
         keyboard_simulator = KeyboardSimulator()
         
@@ -319,7 +318,8 @@ class DigSeedThread(QThread):
                         print(f"第 {i+1} 轮{task_name}被用户中断")
                         return
                     else:
-                        print(f"第 {i+1} 轮{task_name}失败")
+                        print(f"第 {i+1} 轮{task_name}失败, 下马")
+                        dig_seed.getDownHorse()
             except Exception as e:
                 print(f"第 {i+1} 轮{task_name}出现异常: {str(e)}")
                 if not self.running:
@@ -465,32 +465,42 @@ class GameUI(QMainWindow):
         # 创建选项卡
         self.tab_widget = QTabWidget()
         
-        # 第一个选项卡：自动按键
+        # 第一个选项卡：按键配置
+        key_config_tab = QWidget()
+        key_config_layout = QVBoxLayout(key_config_tab)
+        key_config_layout.addWidget(self.createKeyConfigArea())
+        self.tab_widget.addTab(key_config_tab, "按键配置")
+        
+        # 第二个选项卡：自动按键
         auto_key_tab = QWidget()
         auto_key_layout = QVBoxLayout(auto_key_tab)
         auto_key_layout.addWidget(self.createControlArea())
         auto_key_layout.addWidget(self.createLogArea())
         self.tab_widget.addTab(auto_key_tab, "自动按键")
         
-        # 第二个选项卡：挖种子
+        # 第三个选项卡：挖种子
         dig_seed_tab = QWidget()
         dig_seed_layout = QVBoxLayout(dig_seed_tab)
         dig_seed_layout.addWidget(self.createDigSeedArea())
         dig_seed_layout.addWidget(self.createDigSeedLogArea())
         self.tab_widget.addTab(dig_seed_tab, "挖种子")
         
-        # 第三个选项卡：自动回点
+        # 第四个选项卡：自动回点
         auto_return_tab = QWidget()
         auto_return_layout = QVBoxLayout(auto_return_tab)
         auto_return_layout.addWidget(self.createAutoReturnArea())
         auto_return_layout.addWidget(self.createAutoReturnLogArea())
         self.tab_widget.addTab(auto_return_tab, "自动回点")
         
-        # 第四个选项卡：版本历史
+        # 第五个选项卡：版本历史
         update_log_tab = QWidget()
         update_log_layout = QVBoxLayout(update_log_tab)
         update_log_layout.addWidget(self.createUpdateLogArea())
         self.tab_widget.addTab(update_log_tab, "版本历史")
+        
+        # 初始状态：禁用除按键配置外的其他选项卡
+        self.keys_configured = False
+        self.updateTabStates()
         
         main_layout.addWidget(self.tab_widget)
         
@@ -622,6 +632,82 @@ class GameUI(QMainWindow):
         
         return log_group
     
+    def createKeyConfigArea(self):
+        """创建按键配置区域"""
+        key_config_group = QGroupBox("脚本按键配置")
+        key_config_layout = QVBoxLayout(key_config_group)
+        
+        # 说明文字
+        info_label = QLabel("请配置游戏中使用的功能按键，这些按键将在自动化过程中使用：")
+        info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px; font-weight: bold;")
+        key_config_layout.addWidget(info_label)
+        
+        # 按键配置表单布局
+        form_layout = QVBoxLayout()
+        
+        # 创建按键输入控件
+        key_configs = [
+            ("召唤珍兽", "pet_attack", kDefaultKey.pet_attack, "召唤珍兽的按键"),
+            ("珍兽药品", "pet_eat", kDefaultKey.pet_eat, "珍兽药品的按键"),
+            ("血迹", "xue_ji", kDefaultKey.xue_ji, "血迹技能"),
+            ("清心普善咒", "qing_xin", kDefaultKey.qing_xin, "峨眉加血技能按键"),
+            ("定位符", "ding_wei_fu", kDefaultKey.ding_wei_fu, "定位符所在的按键"),
+            ("骑马", "horse", kDefaultKey.horse, "上马/下马的按键")
+        ]
+        
+        self.key_inputs = {}  # 存储按键输入控件
+        
+        for display_name, attr_name, default_value, description in key_configs:
+            # 创建水平布局
+            key_row_layout = QHBoxLayout()
+            
+            # 标签
+            label = QLabel(f"{display_name}:")
+            label.setMinimumWidth(100)
+            key_row_layout.addWidget(label)
+            
+            # 输入框
+            input_field = QLineEdit()
+            input_field.setText(default_value)
+            input_field.setMaximumWidth(80)
+            input_field.setPlaceholderText("按键")
+            self.key_inputs[attr_name] = input_field
+            key_row_layout.addWidget(input_field)
+            
+            # 描述
+            desc_label = QLabel(description)
+            desc_label.setStyleSheet("color: #888; font-size: 11px;")
+            key_row_layout.addWidget(desc_label)
+            
+            key_row_layout.addStretch()  # 添加弹性空间
+            form_layout.addLayout(key_row_layout)
+        
+        # 按钮布局
+        button_layout = QHBoxLayout()
+        
+        # 重置为默认值按钮
+        reset_btn = QPushButton("重置为默认值")
+        reset_btn.clicked.connect(self.resetKeyConfig)
+        button_layout.addWidget(reset_btn)
+        
+        # 保存配置按钮
+        save_btn = QPushButton("保存按键配置")
+        save_btn.clicked.connect(self.saveKeyConfig)
+        save_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+        button_layout.addWidget(save_btn)
+        
+        button_layout.addStretch()  # 添加弹性空间
+        
+        # 配置状态显示
+        self.config_status_label = QLabel("状态：未配置，请先配置按键后才能使用其他功能")
+        self.config_status_label.setStyleSheet("color: #f44336; font-weight: bold;")
+        
+        key_config_layout.addLayout(form_layout)
+        key_config_layout.addLayout(button_layout)
+        key_config_layout.addWidget(self.config_status_label)
+        
+        return key_config_group
+    
     def createDigSeedArea(self):
         """创建挖种子控制区域"""
         dig_seed_group = QGroupBox("挖种子控制")
@@ -651,6 +737,15 @@ class GameUI(QMainWindow):
         self.task_type_combo.addItem("打怪", False)
         param_layout.addWidget(self.task_type_combo)
         
+        # 帮助图标
+        dig_seed_help_label = QLabel("❓")
+        dig_seed_help_label.setFixedSize(20, 20)
+        dig_seed_help_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        dig_seed_help_label.setToolTip("点击查看挖种子使用说明")
+        dig_seed_help_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        dig_seed_help_label.mousePressEvent = lambda ev: self.showDigSeedHelpDialog()
+        param_layout.addWidget(dig_seed_help_label)
+        
         # 2. 按钮布局
         button_layout = QHBoxLayout()
         
@@ -666,17 +761,7 @@ class GameUI(QMainWindow):
         self.dig_seed_stop_btn.setEnabled(False)
         button_layout.addWidget(self.dig_seed_stop_btn)
         
-        # 3. 说明文字
-        info_string = "三点说明："
-        info_string += "\n1. 一定要确保游戏窗口没有其他窗口遮挡."
-        info_string += "\n2. 一定要确保任务追踪打开，且只有种子任务."
-        info_string += "\n3. F9一定要是定位符，F10一定要是上坐骑，且一定要打开非聊天模式."
-        info_label = QLabel(info_string)
-        info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
-        info_label.setWordWrap(True)
-        
         dig_seed_layout.addLayout(param_layout)
-        dig_seed_layout.addWidget(info_label)
         dig_seed_layout.addLayout(button_layout)
         
         return dig_seed_group
@@ -713,6 +798,16 @@ class GameUI(QMainWindow):
         # self.scene_combo.addItem("其他场景", "其他场景")
         self.scene_combo.currentTextChanged.connect(self.onSceneChanged)
         scene_layout.addWidget(self.scene_combo)
+        
+        # 帮助图标
+        auto_return_help_label = QLabel("❓")
+        auto_return_help_label.setFixedSize(20, 20)
+        auto_return_help_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        auto_return_help_label.setToolTip("点击查看自动回点使用说明")
+        auto_return_help_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        auto_return_help_label.mousePressEvent = lambda ev: self.showAutoReturnHelpDialog()
+        scene_layout.addWidget(auto_return_help_label)
+        
         scene_layout.addStretch()  # 添加弹性空间
         
         # 2. 坐标输入布局
@@ -760,18 +855,9 @@ class GameUI(QMainWindow):
         self.auto_return_stop_btn.setEnabled(False)
         button_layout.addWidget(self.auto_return_stop_btn)
         
-        # 5. 说明文字
-        info_string = "使用说明："
-        info_string += "\n1. 确保游戏窗口没有被其他窗口遮挡"
-        info_string += "\n2. F7是珍兽出战，F10是上坐骑"
-        info_label = QLabel(info_string)
-        info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
-        info_label.setWordWrap(True)
-        
         auto_return_layout.addLayout(scene_layout)
         auto_return_layout.addLayout(coord_layout)
         auto_return_layout.addLayout(option_layout)
-        auto_return_layout.addWidget(info_label)
         auto_return_layout.addLayout(button_layout)
         
         return auto_return_group
@@ -948,15 +1034,14 @@ class GameUI(QMainWindow):
     • 支持的按键：
         - 字母键：A-Z
         - 数字键：0-9
-        - 功能键：F1-F6
+        - 功能键：F1-F10
         - 特殊键：SPACE, ENTER, TAB, ESC等
-    • 说明：
-        F7-F10 已经设置了别的功能，请不要修改
-        F7:珍兽出战，F8:宝宝肉，F9:血迹，F10:清心普善咒
 2. 时间设置：
     • 按键间隔：每个按键之间的等待时间
     • 休眠时间：一轮按键完成后的休息时间
     • 建议值：按键间隔0.1-0.5秒，休眠时间1-3秒
+3. 是否是峨眉
+    • 如果勾选，则会自动判断队友的血条，当需要加血时，会使用清心加血
         """
         msg = QMessageBox(self)
         msg.setWindowTitle("帮助文档")
@@ -965,6 +1050,70 @@ class GameUI(QMainWindow):
         msg.setDefaultButton(QMessageBox.Ok)
         msg.resize(500, 400)  # 设置对话框大小
         msg.exec_()
+
+    def saveKeyConfig(self):
+        """保存按键配置"""
+        # 获取所有按键的当前值
+        saved_keys = {}
+        for attr_name, input_field in self.key_inputs.items():
+            key_value = input_field.text().strip()
+            if not key_value:
+                QMessageBox.warning(self, "警告", f"请为 {attr_name} 设置一个按键值！")
+                return
+            saved_keys[attr_name] = key_value
+        
+        # 更新kDefaultKey中的值
+        kDefaultKey.pet_attack = saved_keys.get("pet_attack", kDefaultKey.pet_attack)
+        kDefaultKey.pet_eat = saved_keys.get("pet_eat", kDefaultKey.pet_eat)
+        kDefaultKey.xue_ji = saved_keys.get("xue_ji", kDefaultKey.xue_ji)
+        kDefaultKey.qing_xin = saved_keys.get("qing_xin", kDefaultKey.qing_xin)
+        kDefaultKey.ding_wei_fu = saved_keys.get("ding_wei_fu", kDefaultKey.ding_wei_fu)
+        kDefaultKey.horse = saved_keys.get("horse", kDefaultKey.horse)
+
+        # 启用其他选项卡
+        self.keys_configured = True
+        self.updateTabStates()
+        
+        # 更新配置状态标签
+        self.config_status_label.setText("状态：按键配置已保存，其他功能已启用")
+        self.config_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+
+        QMessageBox.information(self, "提示", "按键配置已保存，其他功能已启用！")
+
+    def resetKeyConfig(self):
+        """重置按键配置为默认值"""
+        # 直接设置默认值
+        default_values = {
+            "pet_attack": "F5",
+            "pet_eat": "F6", 
+            "xue_ji": "F7",
+            "qing_xin": "F8",
+            "ding_wei_fu": "F9",
+            "horse": "F10"
+        }
+        
+        # 更新kDefaultKey对象
+        kDefaultKey.pet_attack = default_values["pet_attack"]
+        kDefaultKey.pet_eat = default_values["pet_eat"]
+        kDefaultKey.xue_ji = default_values["xue_ji"]
+        kDefaultKey.qing_xin = default_values["qing_xin"]
+        kDefaultKey.ding_wei_fu = default_values["ding_wei_fu"]
+        kDefaultKey.horse = default_values["horse"]
+        
+        # 更新UI输入框
+        for attr_name, input_field in self.key_inputs.items():
+            input_field.setText(default_values[attr_name])
+            
+        self.config_status_label.setText("状态：已重置为默认值")
+        self.config_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+        QMessageBox.information(self, "提示", "按键配置已重置为默认值！")
+
+    def updateTabStates(self):
+        """根据按键配置状态更新选项卡的启用/禁用状态"""
+        self.tab_widget.setTabEnabled(1, self.keys_configured) # 自动按键
+        self.tab_widget.setTabEnabled(2, self.keys_configured) # 挖种子
+        self.tab_widget.setTabEnabled(3, self.keys_configured) # 自动回点
+        self.tab_widget.setTabEnabled(4, True) # 版本历史
 
     def startDigSeedThread(self):
         """开始挖种子线程"""
@@ -1122,6 +1271,43 @@ class GameUI(QMainWindow):
             self.y_coord_label.setVisible(True)
             self.y_coord_input.setVisible(True)
             self.return_immediately_checkbox.setVisible(True)
+
+    def showDigSeedHelpDialog(self):
+        """显示挖种子帮助对话框"""
+        help_text = f"""
+1. 当前按键：
+    定位符 = {kDefaultKey.ding_wei_fu} 骑马 = {kDefaultKey.horse}
+2. 任务追踪：
+    确保任务追踪打开，且只有种子任务。
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("挖种子帮助")
+        msg.setText(help_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.resize(500, 400)
+        msg.exec_()
+
+    def showAutoReturnHelpDialog(self):
+        """显示自动回点帮助对话框"""
+        help_text = f"""
+1. 当前按键：
+    定位符 = {kDefaultKey.ding_wei_fu} 骑马 = {kDefaultKey.horse}
+2. 坐标输入：
+    需要输入回点的X和Y坐标。
+    在四象场景中，坐标输入框会自动隐藏。
+3. 死亡后立即起身：
+    勾选后，死亡后会立即尝试起身。
+4. 循环间隔：
+    采用默认值即可，每隔"循环间隔"检查是否在地府。
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("自动回点帮助")
+        msg.setText(help_text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.setDefaultButton(QMessageBox.Ok)
+        msg.resize(500, 400)
+        msg.exec_()
 
 
 # 自定义样式

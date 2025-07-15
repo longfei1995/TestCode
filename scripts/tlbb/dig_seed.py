@@ -7,7 +7,7 @@ from keyboard_simulator import KeyboardSimulator
 from window_manager import WindowManager
 import time
 import numpy as np
-from game_param import ImagePath, Bbox
+from game_param import ImagePath, Bbox, kDefaultKey
 
 class DigSeed:
     def __init__(self, hwnd:int, stop_check_func=None):
@@ -15,20 +15,18 @@ class DigSeed:
         self.keyboard_simulator = KeyboardSimulator()
         self.image_match = ImageMatch(hwnd)
         self.hwnd = hwnd
-        self.kKeyDingWeiFu = "F9"
-        self.kKeyHorse = "F10"
         self.stop_check_func = stop_check_func  # 停止检查函数
     
     def getDownHorse(self):
         """下马"""
-        self.keyboard_simulator.pressKey(self.kKeyHorse, self.hwnd)
+        self.keyboard_simulator.pressKey(kDefaultKey.horse, self.hwnd)
         time.sleep(1)
         print(f"下马, 等待1秒")
         return True
     
     def getUpHorse(self):
         """上马"""
-        self.keyboard_simulator.pressKey(self.kKeyHorse, self.hwnd)
+        self.keyboard_simulator.pressKey(kDefaultKey.horse, self.hwnd)
         print(f"上马, 等待7秒")
         time.sleep(7)
         return True
@@ -310,7 +308,7 @@ class DigSeed:
             self.keyboard_simulator.pressKey('esc', self.hwnd)
             time.sleep(1)
             # 点击定位符
-            self.keyboard_simulator.pressKey(self.kKeyDingWeiFu, self.hwnd)
+            self.keyboard_simulator.pressKey(kDefaultKey.ding_wei_fu, self.hwnd)
             time.sleep(8)
         else:
             # 点击觅影灵券
@@ -349,7 +347,7 @@ class DigSeed:
             self.keyboard_simulator.pressKey('l', self.hwnd)
             time.sleep(3)
             # 点击定位符
-            self.keyboard_simulator.pressKey(self.kKeyDingWeiFu, self.hwnd)
+            self.keyboard_simulator.pressKey(kDefaultKey.ding_wei_fu, self.hwnd)
             time.sleep(8)
         
         ## 通用流程 点击乘黄长老 -> 点击左侧任务 -> 点击完成
