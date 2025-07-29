@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                             QGroupBox, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox,
-                            QMessageBox, QCheckBox, QTabWidget)
+                            QMessageBox, QCheckBox, QTabWidget, QFormLayout, QGridLayout)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
@@ -427,20 +427,22 @@ class GameUI(QMainWindow):
         self.window_manager = WindowManager()
         self.original_stdout = sys.stdout  # 保存原始stdout
         
-        # 创建一个临时的日志函数，因为此时UI还没创建
+        # 1. 创建临时日志收集器
         temp_logs = []
         def tempLog(message):
-            temp_logs.append(message)
-        
-        # 先重定向stdout到临时日志
+            temp_logs.append(message)  # 先把消息存到列表里
+
+        # 2. 先重定向到临时收集器
         sys.stdout = UILogStream(tempLog)
-        
-        # 创建UI
+
+        # 3. 创建UI（这个过程中可能有print输出）
         self.initUI()
-        
-        # 现在UI已创建，将临时日志添加到真正的日志窗口
+
+        # 4. UI创建完成后，把临时收集的日志添加到真正的UI日志窗口
         for log in temp_logs:
-            self.addLog(log)
+            self.addLog(log)  # 现在self.log_text已经存在了
+
+        # 5. 将stdout重定向到真正的UI日志系统
         sys.stdout = UILogStream(self.addLog)
     
     def initUI(self):
@@ -475,21 +477,18 @@ class GameUI(QMainWindow):
         auto_key_tab = QWidget()
         auto_key_layout = QVBoxLayout(auto_key_tab)
         auto_key_layout.addWidget(self.createControlArea())
-        auto_key_layout.addWidget(self.createLogArea())
         self.tab_widget.addTab(auto_key_tab, "自动按键")
         
         # 第三个选项卡：挖种子
         dig_seed_tab = QWidget()
         dig_seed_layout = QVBoxLayout(dig_seed_tab)
         dig_seed_layout.addWidget(self.createDigSeedArea())
-        dig_seed_layout.addWidget(self.createDigSeedLogArea())
         self.tab_widget.addTab(dig_seed_tab, "挖种子")
         
         # 第四个选项卡：自动回点
         auto_return_tab = QWidget()
         auto_return_layout = QVBoxLayout(auto_return_tab)
         auto_return_layout.addWidget(self.createAutoReturnArea())
-        auto_return_layout.addWidget(self.createAutoReturnLogArea())
         self.tab_widget.addTab(auto_return_tab, "自动回点")
         
         # 第五个选项卡：版本历史
@@ -498,11 +497,13 @@ class GameUI(QMainWindow):
         update_log_layout.addWidget(self.createUpdateLogArea())
         self.tab_widget.addTab(update_log_tab, "版本历史")
         
+        # 添加共享的日志区域
+        main_layout.addWidget(self.tab_widget)
+        main_layout.addWidget(self.createLogArea())
+        
         # 初始状态：禁用除按键配置外的其他选项卡
         self.keys_configured = False
         self.updateTabStates()
-        
-        main_layout.addWidget(self.tab_widget)
         
         # 检查是不是由管理员运行
         if self.window_manager.isAdmin():
@@ -512,8 +513,8 @@ class GameUI(QMainWindow):
     
     def createWindowSelectionArea(self):
         """创建窗口选择区域"""
-        window_group = QGroupBox("选择游戏窗口")
-        window_layout = QVBoxLayout(window_group)
+        group = QGroupBox("选择游戏窗口")
+        layout = QVBoxLayout(group)
         
         # layout_1
         layout_1 = QHBoxLayout()
@@ -537,13 +538,13 @@ class GameUI(QMainWindow):
         layout_2.addWidget(self.activate_btn)
         
         # 当前窗口状态显示
-        window_layout.addLayout(layout_1)
-        window_layout.addLayout(layout_2)
+        layout.addLayout(layout_1)
+        layout.addLayout(layout_2)
         self.window_status_label = QLabel("当前窗口: 未选择")
         self.window_status_label.setStyleSheet("color: gray;")
-        window_layout.addWidget(self.window_status_label)
+        layout.addWidget(self.window_status_label)
         
-        return window_group
+        return group
     
     def createControlArea(self):
         """创建自动团本控制区域"""
@@ -616,7 +617,7 @@ class GameUI(QMainWindow):
         return control_group
     
     def createLogArea(self):
-        """创建运行日志区域"""
+        """创建统一的运行日志区域"""
         log_group = QGroupBox("运行日志")
         log_layout = QVBoxLayout(log_group)
         
@@ -634,53 +635,47 @@ class GameUI(QMainWindow):
     
     def createKeyConfigArea(self):
         """创建按键配置区域"""
-        key_config_group = QGroupBox("脚本按键配置")
-        key_config_layout = QVBoxLayout(key_config_group)
+        group = QGroupBox("脚本按键设置")
+        layout = QVBoxLayout(group)
         
         # 说明文字
-        info_label = QLabel("请配置游戏中使用的功能按键，这些按键将在自动化过程中使用：")
+        info_label = QLabel("请先设置游戏中的按键，并且在游戏中打开非聊天模式：")
         info_label.setStyleSheet("color: #666; font-size: 12px; padding: 5px; font-weight: bold;")
-        key_config_layout.addWidget(info_label)
+        layout.addWidget(info_label)
         
         # 按键配置表单布局
-        form_layout = QVBoxLayout()
+        grid_layout = QGridLayout()
         
         # 创建按键输入控件
         key_configs = [
-            ("召唤珍兽", "pet_attack", kDefaultKey.pet_attack, "召唤珍兽的按键"),
-            ("珍兽药品", "pet_eat", kDefaultKey.pet_eat, "珍兽药品的按键"),
-            ("血迹", "xue_ji", kDefaultKey.xue_ji, "血迹技能"),
-            ("清心普善咒", "qing_xin", kDefaultKey.qing_xin, "峨眉加血技能按键"),
-            ("定位符", "ding_wei_fu", kDefaultKey.ding_wei_fu, "定位符所在的按键"),
-            ("骑马", "horse", kDefaultKey.horse, "上马/下马的按键")
+            ("召唤珍兽", "pet_attack", kDefaultKey.pet_attack),
+            ("珍兽药品", "pet_eat", kDefaultKey.pet_eat),
+            ("血迹", "xue_ji", kDefaultKey.xue_ji),
+            ("清心普善咒", "qing_xin", kDefaultKey.qing_xin),
+            ("定位符", "ding_wei_fu", kDefaultKey.ding_wei_fu),
+            ("骑马", "horse", kDefaultKey.horse)
         ]
         
         self.key_inputs = {}  # 存储按键输入控件
         
-        for display_name, attr_name, default_value, description in key_configs:
-            # 创建水平布局
-            key_row_layout = QHBoxLayout()
+        for i, (display_name, attr_name, default_value) in enumerate(key_configs):
+            # 计算网格位置：每行放2个配置项
+            row = i // 3
+            col = (i % 3) * 2  # 每个配置项占2列：标签、输入框
             
             # 标签
             label = QLabel(f"{display_name}:")
-            label.setMinimumWidth(100)
-            key_row_layout.addWidget(label)
+            label.setMaximumWidth(100)
+            grid_layout.addWidget(label, row, col)
             
             # 输入框
             input_field = QLineEdit()
             input_field.setText(default_value)
-            input_field.setMaximumWidth(80)
+            input_field.setMaximumWidth(40)
             input_field.setPlaceholderText("按键")
             self.key_inputs[attr_name] = input_field
-            key_row_layout.addWidget(input_field)
+            grid_layout.addWidget(input_field, row, col + 1)
             
-            # 描述
-            desc_label = QLabel(description)
-            desc_label.setStyleSheet("color: #888; font-size: 11px;")
-            key_row_layout.addWidget(desc_label)
-            
-            key_row_layout.addStretch()  # 添加弹性空间
-            form_layout.addLayout(key_row_layout)
         
         # 按钮布局
         button_layout = QHBoxLayout()
@@ -702,11 +697,11 @@ class GameUI(QMainWindow):
         self.config_status_label = QLabel("状态：未配置，请先配置按键后才能使用其他功能")
         self.config_status_label.setStyleSheet("color: #f44336; font-weight: bold;")
         
-        key_config_layout.addLayout(form_layout)
-        key_config_layout.addLayout(button_layout)
-        key_config_layout.addWidget(self.config_status_label)
+        layout.addLayout(grid_layout)
+        layout.addLayout(button_layout)
+        layout.addWidget(self.config_status_label)
         
-        return key_config_group
+        return group
     
     def createDigSeedArea(self):
         """创建挖种子控制区域"""
@@ -765,23 +760,6 @@ class GameUI(QMainWindow):
         dig_seed_layout.addLayout(button_layout)
         
         return dig_seed_group
-    
-    def createDigSeedLogArea(self):
-        """创建挖种子日志区域"""
-        log_group = QGroupBox("挖种子日志")
-        log_layout = QVBoxLayout(log_group)
-        
-        self.dig_seed_log_text = QTextEdit()
-        self.dig_seed_log_text.setReadOnly(True)
-        self.dig_seed_log_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
-        log_layout.addWidget(self.dig_seed_log_text)
-        
-        # 清除日志按钮
-        clear_dig_seed_log_btn = QPushButton("清除挖种子日志")
-        clear_dig_seed_log_btn.clicked.connect(self.clearDigSeedLog)
-        log_layout.addWidget(clear_dig_seed_log_btn)
-        
-        return log_group
     
     def createAutoReturnArea(self):
         """创建自动回点控制区域"""
@@ -861,23 +839,6 @@ class GameUI(QMainWindow):
         auto_return_layout.addLayout(button_layout)
         
         return auto_return_group
-    
-    def createAutoReturnLogArea(self):
-        """创建自动回点日志区域"""
-        log_group = QGroupBox("自动回点日志")
-        log_layout = QVBoxLayout(log_group)
-        
-        self.auto_return_log_text = QTextEdit()
-        self.auto_return_log_text.setReadOnly(True)
-        self.auto_return_log_text.setStyleSheet("background-color: #f5f5f5; border: 1px solid #ddd;")
-        log_layout.addWidget(self.auto_return_log_text)
-        
-        # 清除日志按钮
-        clear_auto_return_log_btn = QPushButton("清除自动回点日志")
-        clear_auto_return_log_btn.clicked.connect(self.clearAutoReturnLog)
-        log_layout.addWidget(clear_auto_return_log_btn)
-        
-        return log_group
     
     def createUpdateLogArea(self):
         """创建版本历史区域"""
@@ -1004,7 +965,7 @@ class GameUI(QMainWindow):
         self.activate_btn.setEnabled(True)
     
     def addLog(self, message: str):
-        """添加日志信息"""
+        """添加日志信息（统一的日志方法）"""
         from datetime import datetime
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_text.append(f"[{timestamp}] {message}")
@@ -1015,7 +976,7 @@ class GameUI(QMainWindow):
             scrollbar.setValue(scrollbar.maximum())
     
     def clearLog(self):
-        """清除日志"""
+        """清除日志（统一的日志清除方法）"""
         self.log_text.clear()
         self.addLog("日志已清除")
     
@@ -1119,7 +1080,7 @@ class GameUI(QMainWindow):
         """开始挖种子线程"""
         hwnd = self.hwnd
         if hwnd == -1:
-            self.addDigSeedLog("请先选择有效的窗口")
+            self.addLog("请先选择有效的窗口")
             return
         
         # 从UI获取参数
@@ -1128,11 +1089,11 @@ class GameUI(QMainWindow):
         is_dig_seed = self.task_type_combo.currentData()
         
         # 显示启动信息
-        self.addDigSeedLog("***************** 挖种子脚本开始启动 *****************")
+        self.addLog("***************** 挖种子脚本开始启动 *****************")
         
         # 创建线程
         self.dig_seed_thread = DigSeedThread(hwnd, seed_level, loop_count, is_dig_seed)
-        self.dig_seed_thread.log_signal.connect(self.addDigSeedLog)
+        self.dig_seed_thread.log_signal.connect(self.addLog)
         self.dig_seed_thread.finished_signal.connect(self.afterDigSeedThreadFinished)
         
         self.dig_seed_start_btn.setEnabled(False)
@@ -1153,42 +1114,11 @@ class GameUI(QMainWindow):
         self.dig_seed_stop_btn.setEnabled(False)
         self.activate_btn.setEnabled(True)
     
-    def addDigSeedLog(self, message: str):
-        """添加挖种子日志信息"""
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.dig_seed_log_text.append(f"[{timestamp}] {message}")
-        
-        # 自动滚动到底部
-        scrollbar = self.dig_seed_log_text.verticalScrollBar()
-        if scrollbar:
-            scrollbar.setValue(scrollbar.maximum())
-    
-    def clearDigSeedLog(self):
-        """清除挖种子日志"""
-        self.dig_seed_log_text.clear()
-        self.addDigSeedLog("挖种子日志已清除")
-    
-    def loadVersionHistory(self):
-        """加载版本历史"""
-        try:
-            version_history_file = os.path.join(kBaseDir, 'version_history.txt')
-            
-            if os.path.exists(version_history_file):
-                with open(version_history_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.update_log_text.setPlainText(content)
-            else:
-                self.update_log_text.setPlainText("未找到version_history.txt文件")
-                
-        except Exception as e:
-            self.update_log_text.setPlainText(f"读取版本历史失败：{str(e)}")
-
     def startAutoReturnThread(self):
         """开始自动回点线程"""
         hwnd = self.hwnd
         if hwnd == -1:
-            self.addAutoReturnLog("请先选择有效的窗口")
+            self.addLog("请先选择有效的窗口")
             return
         
         # 从UI获取参数
@@ -1201,7 +1131,7 @@ class GameUI(QMainWindow):
         # 验证参数 - 只有非四象场景才需要验证坐标
         if scene_type != "四象":
             if not x or not y:
-                self.addAutoReturnLog("请输入有效的X和Y坐标")
+                self.addLog("请输入有效的X和Y坐标")
                 return
             
             try:
@@ -1209,15 +1139,15 @@ class GameUI(QMainWindow):
                 int(x)
                 int(y)
             except ValueError:
-                self.addAutoReturnLog("X和Y坐标必须是数字")
+                self.addLog("X和Y坐标必须是数字")
                 return
         
         # 显示启动信息
-        self.addAutoReturnLog("***************** 自动回点脚本开始启动 *****************")
+        self.addLog("***************** 自动回点脚本开始启动 *****************")
         
         # 创建线程
         self.auto_return_thread = AutoReturnThread(hwnd, scene_type, x, y, is_return_immediately, interval_time)
-        self.auto_return_thread.log_signal.connect(self.addAutoReturnLog)
+        self.auto_return_thread.log_signal.connect(self.addLog)
         self.auto_return_thread.finished_signal.connect(self.afterAutoReturnThreadFinished)
         
         self.auto_return_start_btn.setEnabled(False)
@@ -1238,22 +1168,21 @@ class GameUI(QMainWindow):
         self.auto_return_stop_btn.setEnabled(False)
         self.activate_btn.setEnabled(True)
     
-    def addAutoReturnLog(self, message: str):
-        """添加自动回点日志信息"""
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.auto_return_log_text.append(f"[{timestamp}] {message}")
-        
-        # 自动滚动到底部
-        scrollbar = self.auto_return_log_text.verticalScrollBar()
-        if scrollbar:
-            scrollbar.setValue(scrollbar.maximum())
-    
-    def clearAutoReturnLog(self):
-        """清除自动回点日志"""
-        self.auto_return_log_text.clear()
-        self.addAutoReturnLog("自动回点日志已清除")
-    
+    def loadVersionHistory(self):
+        """加载版本历史"""
+        try:
+            version_history_file = os.path.join(kBaseDir, 'version_history.txt')
+            
+            if os.path.exists(version_history_file):
+                with open(version_history_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.update_log_text.setPlainText(content)
+            else:
+                self.update_log_text.setPlainText("未找到version_history.txt文件")
+                
+        except Exception as e:
+            self.update_log_text.setPlainText(f"读取版本历史失败：{str(e)}")
+
     def onSceneChanged(self, scene_text):
         """场景选择变化时的处理"""
         scene_data = self.scene_combo.currentData()
