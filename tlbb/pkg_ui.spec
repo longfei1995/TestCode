@@ -50,6 +50,7 @@ a = Analysis(
         'threading',
         'queue',
         'logging',
+        'subprocess',  # 系统管理功能需要
         # 项目内部模块
         'game_param',
         'window_manager',
@@ -58,6 +59,7 @@ a = Analysis(
         'dig_seed',  # 新增的挖种子模块
         'img_match',  # 图像匹配模块
         'auto_return',  # 自动回点模块
+        'sys_manager',  # 系统管理模块
         'license_manager',  # 许可证管理模块
         'license_dialog',   # 许可证对话框模块
     ],
@@ -99,6 +101,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='icon.ico',
+    uac_admin=True,  # 请求管理员权限
 )
 
 # 创建包含所有文件的目录

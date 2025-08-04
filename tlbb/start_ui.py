@@ -14,7 +14,7 @@ from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
 from dig_seed import DigSeed
 from auto_return import AutoReturn  # 导入AutoReturn类
-
+from sys_manager import shutdownPC, cancelShutdown
 
 class UILogStream:
     """自定义输出流，将print输出重定向到UI日志"""
@@ -491,7 +491,13 @@ class GameUI(QMainWindow):
         auto_return_layout.addWidget(self.createAutoReturnArea())
         self.tab_widget.addTab(auto_return_tab, "自动回点")
         
-        # 第五个选项卡：版本历史
+        # 第五个选项卡：系统管理
+        system_manager_tab = QWidget()
+        system_manager_layout = QVBoxLayout(system_manager_tab)
+        system_manager_layout.addWidget(self.createSystemManagerArea())
+        self.tab_widget.addTab(system_manager_tab, "系统管理")
+        
+        # 第六个选项卡：版本历史
         update_log_tab = QWidget()
         update_log_layout = QVBoxLayout(update_log_tab)
         update_log_layout.addWidget(self.createUpdateLogArea())
@@ -511,6 +517,87 @@ class GameUI(QMainWindow):
         else:
             print("⚠ 当前程序以普通用户权限运行，部分功能无法启用，请重新以管理员身份运行...")
     
+    def createSystemManagerArea(self):
+        """创建系统管理区域"""
+        main_group = QGroupBox("系统管理")
+        main_layout = QVBoxLayout(main_group)
+        
+        # 1. 关机布局
+        input_layout = QHBoxLayout()
+        
+        # 输入布局
+        input_layout.addWidget(QLabel("输入关机时间(小时):"))
+        self.shutdown_time_input = QLineEdit()
+        self.shutdown_time_input.setMaximumWidth(100)
+        self.shutdown_time_input.setPlaceholderText("如: 3.5")
+        input_layout.addWidget(self.shutdown_time_input)
+        
+        # 关机按钮
+        self.shutdown_btn = QPushButton("设置定时关机")
+        self.shutdown_btn.clicked.connect(self.setShutdown)
+        input_layout.addWidget(self.shutdown_btn)
+        
+        # 取消关机按钮
+        self.cancel_shutdown_btn = QPushButton("取消关机")
+        self.cancel_shutdown_btn.clicked.connect(self.cancelShutdown)
+        input_layout.addWidget(self.cancel_shutdown_btn)
+        
+        input_layout.addStretch()  # 添加弹性空间
+        main_layout.addLayout(input_layout)
+        
+        return main_group
+    
+    def setShutdown(self):
+        """设置定时关机"""
+        try:
+            hours_text = self.shutdown_time_input.text().strip()
+            if not hours_text:
+                QMessageBox.warning(self, "警告", "请输入关机时间（小时）")
+                return
+            
+            hours = float(hours_text)
+            if hours <= 0:
+                QMessageBox.warning(self, "警告", "关机时间必须大于0")
+                return
+            
+            if hours > 24:
+                reply = QMessageBox.question(self, "确认", 
+                                           f"您设置的关机时间为 {hours} 小时，这是一个很长的时间。\n确定要继续吗？",
+                                           QMessageBox.Yes | QMessageBox.No,
+                                           QMessageBox.No)
+                if reply != QMessageBox.Yes:
+                    return
+            
+            # 调用关机函数
+            success = shutdownPC(hours)
+            if success:
+                self.addLog(f"✓ 成功设置 {hours} 小时后关机")
+                QMessageBox.information(self, "成功", f"系统将在 {hours} 小时后关机")
+            else:
+                self.addLog(f"✗ 设置关机失败")
+                QMessageBox.warning(self, "失败", "设置关机失败，请检查系统权限")
+                
+        except ValueError:
+            QMessageBox.warning(self, "错误", "请输入有效的数字（支持小数，如: 3.5）")
+        except Exception as e:
+            self.addLog(f"✗ 设置关机时发生错误: {str(e)}")
+            QMessageBox.critical(self, "错误", f"设置关机时发生错误:\n{str(e)}")
+    
+    def cancelShutdown(self):
+        """取消关机计划"""
+        try:
+            success = cancelShutdown()
+            if success:
+                self.addLog("✓ 成功取消关机计划")
+                QMessageBox.information(self, "成功", "已成功取消关机计划")
+            else:
+                self.addLog("✗ 取消关机失败")
+                QMessageBox.warning(self, "失败", "取消关机失败")
+                
+        except Exception as e:
+            self.addLog(f"✗ 取消关机时发生错误: {str(e)}")
+            QMessageBox.critical(self, "错误", f"取消关机时发生错误:\n{str(e)}")
+
     def createWindowSelectionArea(self):
         """创建窗口选择区域"""
         group = QGroupBox("选择游戏窗口")
@@ -547,9 +634,9 @@ class GameUI(QMainWindow):
         return group
     
     def createControlArea(self):
-        """创建自动团本控制区域"""
-        control_group = QGroupBox("自动按键控制")
-        control_layout = QVBoxLayout(control_group)
+        """自动按键选项卡"""
+        main_group = QGroupBox("自动按键控制")
+        main_layout = QVBoxLayout(main_group)
         # 1. 按键序列布局
         key_layout = QHBoxLayout()
         key_layout.addWidget(QLabel("按键序列:"))
@@ -611,10 +698,10 @@ class GameUI(QMainWindow):
         self.stop_btn.setEnabled(False)
         button_layout.addWidget(self.stop_btn)
         
-        control_layout.addLayout(key_layout)
-        control_layout.addLayout(spinbox_layout)
-        control_layout.addLayout(button_layout)
-        return control_group
+        main_layout.addLayout(key_layout)
+        main_layout.addLayout(spinbox_layout)
+        main_layout.addLayout(button_layout)
+        return main_group
     
     def createLogArea(self):
         """创建统一的运行日志区域"""
@@ -936,9 +1023,6 @@ class GameUI(QMainWindow):
             self.addLog("请输入按键序列")
             return
         
-        # 显示启动信息
-        print(f"***************** 脚本开始启动 *****************")
-        
         # 创建线程时传递参数
         self.raid_thread = RaidThread(hwnd, self.addLog, key_interval, sleep_time, is_em, key_sequence)
         self.raid_thread.log_signal.connect(self.addLog)
@@ -1074,7 +1158,8 @@ class GameUI(QMainWindow):
         self.tab_widget.setTabEnabled(1, self.keys_configured) # 自动按键
         self.tab_widget.setTabEnabled(2, self.keys_configured) # 挖种子
         self.tab_widget.setTabEnabled(3, self.keys_configured) # 自动回点
-        self.tab_widget.setTabEnabled(4, True) # 版本历史
+        self.tab_widget.setTabEnabled(4, True) # 系统管理
+        self.tab_widget.setTabEnabled(5, True) # 版本历史
 
     def startDigSeedThread(self):
         """开始挖种子线程"""
