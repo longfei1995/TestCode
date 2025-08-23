@@ -134,7 +134,7 @@ class AutoReturn:
     def locateAutoReturn(self, x:str, y:str):
         # 获取自动寻路对话框
         print(f"开始局部寻路到坐标: ({x}, {y})")
-        self.keyboard_simulator.pressKey("`", self.hwnd)
+        self.keyboard_simulator.mouseClick(960, 252, self.hwnd)
         time.sleep(1)
         bbox = self.image_match.getImageBbox(ImagePath.auto_return.auto_find)
         if bbox is not None:
