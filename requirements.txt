@@ -1,0 +1,19 @@
+# 天龙八部自动化工具所需的Python库
+# 安装命令: pip install -r requirements.txt
+
+# GUI界面库
+PyQt5>=5.15.0
+
+# Windows系统API库
+pywin32>=227
+
+# 图像处理库
+Pillow>=8.0.0
+opencv-python>=4.5.0
+numpy>=1.20.0
+
+# 自动化控制库
+pyautogui>=0.9.50
+
+# 打包工具
+PyInstaller>=4.5
