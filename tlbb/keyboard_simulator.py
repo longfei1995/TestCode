@@ -64,43 +64,29 @@ class KeyboardSimulator:
         self.lock_file_handle = None  # 锁文件句柄
     
     def _getLockDir(self) -> Path:
-        """获取锁文件目录 - 选择最合适的系统级目录
+        """获取锁文件目录 - 使用程序所在目录
         Returns:
             Path: 锁文件目录路径
         """
-        # 按优先级尝试不同的目录
-        lock_dirs = [
-            # 1. 程序所在目录 (最优先，便于管理)
-            Path(__file__).parent / "locks",
-            
-            # 2. 系统级临时目录 (兼容性备选)
-            Path(os.environ.get('ALLUSERSPROFILE', 'C:\\ProgramData')) / "tlbb_locks",
-            
-            # 3. 用户临时目录 (最后备选)
-            Path(tempfile.gettempdir()) / "tlbb_locks"
-        ]
+        # 使用程序所在目录的 locks 子目录
+        lock_dir = Path(__file__).parent / "locks"
         
-        for lock_dir in lock_dirs:
-            try:
-                # 尝试创建目录
-                lock_dir.mkdir(parents=True, exist_ok=True)
-                
-                # 测试写入权限
-                test_file = lock_dir / "test_write.tmp"
-                test_file.write_text("test")
-                test_file.unlink()  # 删除测试文件
-                
-                print(f"[鼠标锁] 使用锁文件目录: {lock_dir}")
-                return lock_dir
-                
-            except Exception as e:
-                print(f"[鼠标锁] 无法使用目录 {lock_dir}: {e}")
-                continue
-        
-        # 如果所有目录都失败，回退到默认临时目录
-        fallback_dir = Path(tempfile.gettempdir())
-        print(f"[鼠标锁] 警告：回退到默认临时目录: {fallback_dir}")
-        return fallback_dir
+        try:
+            # 尝试创建目录
+            lock_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 测试写入权限
+            test_file = lock_dir / "test_write.tmp"
+            test_file.write_text("test")
+            test_file.unlink()  # 删除测试文件
+            
+            print(f"[鼠标锁] 使用锁文件目录: {lock_dir}")
+            return lock_dir
+            
+        except Exception as e:
+            print(f"[鼠标锁] 无法使用程序目录 {lock_dir}: {e}")
+            # 如果程序目录失败，抛出异常而不是回退
+            raise RuntimeError(f"无法创建锁文件目录: {e}") from e
     
     def _getLockOwnerInfo(self) -> str:
         """获取锁文件占用者信息
