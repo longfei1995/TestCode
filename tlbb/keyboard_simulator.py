@@ -272,31 +272,81 @@ class KeyboardSimulator:
     def _forceReleaseLock(self):
         """强制释放锁文件"""
         try:
+            # 先尝试关闭可能打开的文件句柄
+            if hasattr(self, 'lock_file_handle') and self.lock_file_handle:
+                try:
+                    self.lock_file_handle.close()
+                    self.lock_file_handle = None
+                    print(f"[鼠标锁] 已关闭锁文件句柄")
+                except Exception as handle_e:
+                    print(f"[鼠标锁] 关闭锁文件句柄失败: {handle_e}")
+            
             if self.lock_file.exists():
                 # 尝试删除锁文件
-                os.remove(str(self.lock_file))
-                print(f"[鼠标锁] 强制释放锁文件成功")
+                lock_file_path = str(self.lock_file)
+                print(f"[鼠标锁] 正在强制删除锁文件: {lock_file_path}")
+                
+                # 多次尝试删除，处理可能的文件占用情况
+                for attempt in range(3):
+                    try:
+                        os.remove(lock_file_path)
+                        print(f"[鼠标锁] 强制释放锁文件成功")
+                        return
+                    except PermissionError as pe:
+                        print(f"[鼠标锁] 删除锁文件权限被拒绝 (尝试 {attempt + 1}/3): {pe}")
+                        if attempt < 2:
+                            time.sleep(0.1)  # 短暂等待后重试
+                    except FileNotFoundError:
+                        print(f"[鼠标锁] 锁文件已不存在")
+                        return
+                    except Exception as file_e:
+                        print(f"[鼠标锁] 删除锁文件异常 (尝试 {attempt + 1}/3): {file_e}")
+                        if attempt < 2:
+                            time.sleep(0.1)  # 短暂等待后重试
+                
+                # 如果所有尝试都失败，记录详细错误
+                print(f"[鼠标锁] 经过3次尝试，仍无法删除锁文件: {lock_file_path}")
             else:
                 print(f"[鼠标锁] 锁文件不存在，无需强制释放")
+                
         except Exception as e:
-            print(f"[鼠标锁] 强制释放锁文件失败")
+            print(f"[鼠标锁] 强制释放锁文件过程中发生未预期的错误: {e}")
+            print(f"[鼠标锁] 错误类型: {type(e).__name__}")
+            # 尝试获取更多错误信息
+            try:
+                import traceback
+                print(f"[鼠标锁] 错误堆栈: {traceback.format_exc()}")
+            except:
+                pass
     
     def _releaseMouseLock(self) -> None:
         """释放鼠标锁"""
         try:
+            # 先关闭文件句柄
             if self.lock_file_handle:
-                self.lock_file_handle.close()
-                self.lock_file_handle = None
-        except Exception:
-            pass  # 关闭失败不影响程序运行
+                try:
+                    self.lock_file_handle.close()
+                    self.lock_file_handle = None
+                except Exception as handle_e:
+                    print(f"[鼠标锁] 关闭锁文件句柄失败: {handle_e}")
+        except Exception as e:
+            print(f"[鼠标锁] 处理文件句柄时发生错误: {e}")
         
         # 删除锁文件
         try:
             if self.lock_file.exists():
-                os.remove(str(self.lock_file))
+                lock_file_path = str(self.lock_file)
+                os.remove(lock_file_path)
                 print(f"[鼠标锁] 释放锁成功 - 进程ID: {os.getpid()}")
+            else:
+                print(f"[鼠标锁] 锁文件已不存在 - 进程ID: {os.getpid()}")
+        except PermissionError as pe:
+            print(f"[鼠标锁] 释放锁文件权限被拒绝: {pe}")
+        except FileNotFoundError:
+            print(f"[鼠标锁] 锁文件不存在，已释放 - 进程ID: {os.getpid()}")
         except Exception as e:
             print(f"[鼠标锁] 释放锁文件失败: {e}")
+            print(f"[鼠标锁] 错误类型: {type(e).__name__}")
     
     def getVirtualKeyCode(self, key: str) -> int:
         """获取按键的虚拟键码"""

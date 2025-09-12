@@ -446,7 +446,7 @@ class GameUI(QMainWindow):
         sys.stdout = UILogStream(self.addLog)
     
     def initUI(self):
-        self.setWindowTitle('豆子 release_data:250911')
+        self.setWindowTitle('豆子 release_data:250912')
         self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
