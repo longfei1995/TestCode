@@ -394,6 +394,8 @@ class AutoReturnThread(QThread):
                         auto_return._getUpHorse()
                         time.sleep(1)
                     auto_return.toSiXiang()
+                elif self.scene_type == "苗人洞":
+                    auto_return.toMiaoRenDong(self.x, self.y, self.is_return_immediately)
                 else:
                     print(f"暂不支持场景: {self.scene_type}")
                     
@@ -446,7 +448,7 @@ class GameUI(QMainWindow):
         sys.stdout = UILogStream(self.addLog)
     
     def initUI(self):
-        self.setWindowTitle('豆子 release_data:250912')
+        self.setWindowTitle('豆子 release_date:260309')
         self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
@@ -859,6 +861,7 @@ class GameUI(QMainWindow):
         self.scene_combo = QComboBox()
         self.scene_combo.addItem("雪原", "雪原")
         self.scene_combo.addItem("四象回点", "四象")
+        self.scene_combo.addItem("苗人洞", "苗人洞")
         # 可以在这里添加更多场景选项
         # self.scene_combo.addItem("其他场景", "其他场景")
         self.scene_combo.currentTextChanged.connect(self.onSceneChanged)

@@ -103,6 +103,13 @@ class AutoReturn:
         if bbox is not None:
             return True
         return False
+
+    def _isInMiaoRenDong(self):
+        """判断是否在苗人洞"""
+        bbox = self.image_match.getImageBbox(ImagePath.auto_return.miao_ren_dong, is_print=False)
+        if bbox is not None:
+            return True
+        return False
     
     def _clickChuQiao(self):
         """点击出窍"""
@@ -227,6 +234,59 @@ class AutoReturn:
             self._clickQianWangJiTan()
         else:
             print("当前人物不在四象天门阵")
+
+    def toMiaoRenDong(self, x: str, y: str, is_return_immediately: bool = False):
+        """去苗人洞"""
+        # 如果是立即返回，那么检查是否有确定框
+        if is_return_immediately:
+            if self._clickChuQiao():
+                print("点击出窍成功")
+        # 如果在地府，那么执行回点流程，否则不做其他动作
+        if self._isInHell():
+            self._escapeHell()
+            # 上马
+            self._getUpHorse()
+            # 点击世界地图
+            self.keyboard_simulator.pressKey("m", self.hwnd)
+            time.sleep(1)
+            # 点击苗人洞
+            self.keyboard_simulator.mouseClick(756, 712, self.hwnd)
+            time.sleep(1)
+            # 点击屏幕中心
+            center_x, center_y = self._getWindowCenter()
+            print(f"点击窗口中心坐标: {center_x}, {center_y}")
+            self.keyboard_simulator.mouseClick(center_x, center_y, self.hwnd)
+            time.sleep(1)
+            # 点击场景确认框
+            self._moveSceneConfirm()
+            time.sleep(1)
+            # 按键盘esc
+            self.keyboard_simulator.pressKey("esc", self.hwnd)
+            time.sleep(1)
+            # 等待人物静止
+            self._isPersonStop(max_wait_time=300)
+            # 局部寻路到指定坐标
+            self.locateAutoReturn(x, y)
+            # 等待人物静止
+            self._isPersonStop(max_wait_time=100)
+            # 按键盘esc
+            self.keyboard_simulator.pressKey("esc", self.hwnd)
+            time.sleep(1)
+            # 下马
+            self._getDownHorse()
+            time.sleep(1)
+            # 召唤宠物
+            self.keyboard_simulator.pressKey("f7", self.hwnd)
+            time.sleep(1)
+            # 开始战斗
+            self.keyboard_simulator.pressKey("l", self.hwnd)
+            time.sleep(1)
+        else:
+            print("当前人物不在地府")
+            if self._isInMiaoRenDong():
+                print("当前人物在苗人洞，不做任何动作")
+            else:
+                print("当前人物不在苗人洞")
 
 if __name__ == "__main__":
     window_manager = WindowManager()

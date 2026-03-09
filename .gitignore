@@ -12,6 +12,7 @@ log/
 dist/
 __pycache__/
 scripts/tlbb/pics/
+pics/
 
 # file
 *.pdf
