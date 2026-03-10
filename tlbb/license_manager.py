@@ -8,7 +8,6 @@ import json
 import os
 import platform
 import subprocess
-import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 import base64
@@ -58,11 +57,19 @@ class LicenseManager:
             except:
                 pass
             
-            # MAC 地址
+            # MAC 地址（仅物理网卡，排序保证多网卡时顺序稳定，避免 VPN/虚拟网卡干扰）
             try:
-                mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) 
-                               for ele in range(0, 8*6, 8)][::-1])
-                info_parts.append(mac)
+                result = subprocess.run(
+                    ['wmic', 'nic', 'where', 'PhysicalAdapter=TRUE', 'get', 'MACAddress'],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    macs = sorted([
+                        line.strip() for line in result.stdout.strip().split('\n')[1:]
+                        if line.strip()
+                    ])
+                    if macs:
+                        info_parts.append(macs[0])
             except:
                 pass
             
@@ -88,12 +95,19 @@ class LicenseManager:
             
         except Exception as e:
             print(f"获取硬件ID时出错: {e}")
-            # 备用方案：使用MAC地址
+            # 备用方案：使用主板序列号（不依赖可能变化的网卡信息）
             try:
-                mac = hex(uuid.getnode())[2:].upper()
-                return hashlib.sha256(mac.encode()).hexdigest()[:16].upper()
+                result = subprocess.run(
+                    ['wmic', 'baseboard', 'get', 'serialnumber'],
+                    capture_output=True, text=True, timeout=5
+                )
+                lines = result.stdout.strip().split('\n')
+                serial = lines[1].strip() if len(lines) > 1 else ''
+                if serial:
+                    return hashlib.sha256(serial.encode()).hexdigest()[:16].upper()
             except:
-                return "UNKNOWN_HARDWARE"
+                pass
+            return "UNKNOWN_HARDWARE"
     
     def generate_license_key(self, hardware_id: str, expiry_date: str, 
                            user_info: str = "Licensed User") -> str:
