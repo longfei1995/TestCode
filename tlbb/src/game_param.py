@@ -112,6 +112,7 @@ class DefaultKeyConfig:
     qing_xin: str = "F8"
     ding_wei_fu: str = "F9"
     horse: str = "F10"
+    key_sequence: str = "Q E"
 
 # 创建实例
 kHPBar = HPBarConfig()
@@ -129,7 +130,7 @@ def loadKeyConfig():
             data = yaml.safe_load(f)
         if not isinstance(data, dict):
             return
-        for field in ("pet_attack", "pet_eat", "xue_ji", "qing_xin", "ding_wei_fu", "horse"):
+        for field in ("pet_attack", "pet_eat", "xue_ji", "qing_xin", "ding_wei_fu", "horse", "key_sequence"):
             if field in data and isinstance(data[field], str):
                 setattr(kDefaultKey, field, data[field])
     except Exception:

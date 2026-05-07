@@ -32,7 +32,7 @@ class UILogStream:
 
 
 class RaidThread(QThread):
-    """后台运行自动团本的线程"""
+    """自动按键"""
     log_signal = pyqtSignal(str)
     finished_signal = pyqtSignal()
     
@@ -97,14 +97,14 @@ class RaidThread(QThread):
             
             # 2. 执行默认按键
             # 2.0 召唤宠物
-            if cycle_count % 20 == 0:
-                keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
-            keyboard_simulator.pressKey(kDefaultKey.pet_eat, hwnd)
+            # if cycle_count % 20 == 0:
+            #     keyboard_simulator.pressKey(kDefaultKey.pet_attack, hwnd)
+            # keyboard_simulator.pressKey(kDefaultKey.pet_eat, hwnd)
             
-            # 2.1 如果自己空蓝，点击血迹
-            mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
-            if color_detector.isEmpty(mp_color_p1):
-                keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
+            # # 2.1 如果自己空蓝，点击血迹
+            # mp_color_p1 = color_detector.getPixelPosColorInWindow(hwnd, kMPBar.player1.x, kMPBar.player1.y)
+            # if color_detector.isEmpty(mp_color_p1):
+            #     keyboard_simulator.pressKey(kDefaultKey.xue_ji, hwnd)
             
             # 2.1 峨眉
             if self.is_em:
@@ -241,8 +241,7 @@ class RaidThread(QThread):
             if not self.running:
                 print("**************休眠期间收到停止信号，脚本退出**************")
                 return
-        
-        print("**************自动团本循环结束**************")
+
         
     def stop(self):
         self.running = False
@@ -646,9 +645,14 @@ class GameUI(QMainWindow):
         
         # 按键序列输入
         self.key_sequence_input = QLineEdit()
-        self.key_sequence_input.setText("Q E")  # 默认值
+        self.key_sequence_input.setText(kDefaultKey.key_sequence)  # 加载保存的序列
         key_layout.addWidget(self.key_sequence_input)
         
+        # 保存按键序列按钮
+        save_seq_btn = QPushButton("保存序列")
+        save_seq_btn.clicked.connect(self.saveKeySequence)
+        key_layout.addWidget(save_seq_btn)
+
         # 按键序列帮助图标
         help_label = QLabel("❓")
         help_label.setFixedSize(20, 20)
@@ -1114,10 +1118,16 @@ class GameUI(QMainWindow):
         kDefaultKey.ding_wei_fu = saved_keys.get("ding_wei_fu", kDefaultKey.ding_wei_fu)
         kDefaultKey.horse = saved_keys.get("horse", kDefaultKey.horse)
 
-        # 将按键配置写入 key_setting.yaml
+        # 将按键配置写入 key_setting.yaml（读-改-写，保留其他已有字段）
         config_path = os.path.join(kResDir, "key_setting.yaml")
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                existing = yaml.safe_load(f) or {}
+        except Exception:
+            existing = {}
+        existing.update(saved_keys)
         with open(config_path, "w", encoding="utf-8") as f:
-            yaml.dump(saved_keys, f, allow_unicode=True, default_flow_style=False)
+            yaml.dump(existing, f, allow_unicode=True, default_flow_style=False)
 
         # 启用其他选项卡
         self.keys_configured = True
@@ -1128,6 +1138,24 @@ class GameUI(QMainWindow):
         self.config_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
 
         QMessageBox.information(self, "提示", "按键配置已保存，其他功能已启用！")
+
+    def saveKeySequence(self):
+        """保存按键序列到 key_setting.yaml"""
+        seq = self.key_sequence_input.text().strip()
+        if not seq:
+            QMessageBox.warning(self, "警告", "按键序列不能为空！")
+            return
+        kDefaultKey.key_sequence = seq
+        config_path = os.path.join(kResDir, "key_setting.yaml")
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                existing = yaml.safe_load(f) or {}
+        except Exception:
+            existing = {}
+        existing["key_sequence"] = seq
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(existing, f, allow_unicode=True, default_flow_style=False)
+        QMessageBox.information(self, "提示", "按键序列已保存！")
 
     def updateTabStates(self):
         """根据按键配置状态更新选项卡的启用/禁用状态"""
