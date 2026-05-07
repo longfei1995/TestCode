@@ -22,7 +22,14 @@ def getBasePath():
 
 # 全局路径常量
 kBaseDir = getBasePath()
-kPicDir = os.path.join(kBaseDir, "img_src")
+
+# 资源文件目录：打包后与 exe 同级（根目录），开发环境指向 ../res/
+if getattr(sys, 'frozen', False):
+    kResDir = kBaseDir
+else:
+    kResDir = os.path.normpath(os.path.join(kBaseDir, "..", "res"))
+
+kPicDir = os.path.join(kResDir, "img_src")
 
 @dataclass(frozen=True)
 class Point:

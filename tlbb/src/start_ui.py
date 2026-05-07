@@ -8,7 +8,7 @@ from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
 from io import StringIO
 import os
 import time
-from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir
+from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir, kResDir
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
@@ -452,7 +452,7 @@ class GameUI(QMainWindow):
         self.setGeometry(100, 100, 500, 400)
         
         # 设置窗口图标（如果图标文件存在）
-        icon_path = os.path.join(kBaseDir, "icon.ico")
+        icon_path = os.path.join(kResDir, "icon.ico")
         if icon_path and os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         
@@ -1259,7 +1259,7 @@ class GameUI(QMainWindow):
     def loadVersionHistory(self):
         """加载版本历史"""
         try:
-            version_history_file = os.path.join(kBaseDir, 'version_history.txt')
+            version_history_file = os.path.join(kResDir, 'version_history.txt')
             
             if os.path.exists(version_history_file):
                 with open(version_history_file, 'r', encoding='utf-8') as f:
@@ -1332,7 +1332,7 @@ def loadStylesheet():
     """加载样式表文件"""
     try:
         # 获取样式文件路径
-        style_path = os.path.join(kBaseDir, 'styles.qss')
+        style_path = os.path.join(kResDir, 'styles.qss')
         
         # 读取样式文件
         if os.path.exists(style_path):
@@ -1352,24 +1352,6 @@ def main():
     if stylesheet:
         app.setStyleSheet(stylesheet)
         print("样式文件加载成功")
-    
-    # 许可证检查 - 在显示主界面前验证授权
-    try:
-        from license_dialog import LicenseDialog
-        
-        # 检查授权状态，如果未授权则显示激活对话框
-        is_authorized = LicenseDialog.checkAndShowLicense()
-        
-        if not is_authorized:
-            print("软件未授权，程序将退出")
-            sys.exit(0)
-            
-    except ImportError:
-        print("警告：许可证检查模块未找到，跳过授权验证")
-    except Exception as e:
-        print(f"许可证检查时出错: {e}")
-        # 可以选择是否继续运行
-        # sys.exit(1)  # 取消注释此行以在授权检查失败时退出
     
     window = GameUI()
     window.show()

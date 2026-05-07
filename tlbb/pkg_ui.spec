@@ -3,18 +3,18 @@
 block_cipher = None
 
 a = Analysis(
-    ['start_ui.py'],
-    pathex=[],
+    ['src/start_ui.py'],
+    pathex=['src'],
     binaries=[],
     datas=[
         # 包含图标文件到根目录
-        ('icon.ico', '.'),
+        ('res/icon.ico', '.'),
         # 包含样式文件到根目录
-        ('styles.qss', '.'),
+        ('res/styles.qss', '.'),
         # 包含版本历史文件到根目录
-        ('version_history.txt', '.'),
+        ('res/version_history.txt', '.'),
         # 包含图片资源文件夹
-        ('img_src', 'img_src'),
+        ('res/img_src', 'img_src'),
     ],
     hiddenimports=[
         # PyQt5相关模块
@@ -60,8 +60,6 @@ a = Analysis(
         'img_match',  # 图像匹配模块
         'auto_return',  # 自动回点模块
         'sys_manager',  # 系统管理模块
-        'license_manager',  # 许可证管理模块
-        'license_dialog',   # 许可证对话框模块
     ],
     hookspath=[],
     hooksconfig={},
@@ -100,7 +98,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico',
+    icon='res/icon.ico',
     uac_admin=True,  # 请求管理员权限
 )
 
