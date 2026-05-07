@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 from dataclasses import dataclass
 import os
 import sys
+import yaml
 
 def getBasePath():
     """获取exe所在的路径，兼容开发环境和打包后的环境"""
@@ -117,3 +118,21 @@ kHPBar = HPBarConfig()
 kMPBar = MPBarConfig()
 kDefaultKey = DefaultKeyConfig()
 kProfilePhoto = PhotoConfig()
+
+def loadKeyConfig():
+    """从 key_setting.yaml 加载按键配置，若文件不存在则保持默认值"""
+    config_path = os.path.join(kResDir, "key_setting.yaml")
+    if not os.path.exists(config_path):
+        return
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            return
+        for field in ("pet_attack", "pet_eat", "xue_ji", "qing_xin", "ding_wei_fu", "horse"):
+            if field in data and isinstance(data[field], str):
+                setattr(kDefaultKey, field, data[field])
+    except Exception:
+        pass
+
+loadKeyConfig()

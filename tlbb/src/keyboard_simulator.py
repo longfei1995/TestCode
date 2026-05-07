@@ -3,11 +3,8 @@ import win32con
 import win32gui
 import time
 import random
-import os
-import tempfile
+import ctypes
 from typing import Union, List
-from pathlib import Path
-import msvcrt
 
 class KeyboardSimulator:
     """键盘模拟器"""
@@ -56,284 +53,45 @@ class KeyboardSimulator:
     }
     
     def __init__(self):
-        # 初始化鼠标锁相关属性
-        # 使用系统级锁文件目录，确保跨用户、跨进程共享
-        lock_dir = self._getLockDir()
-        self.lock_file = lock_dir / "tlbb_mouse_lock.txt"
-        self.lock_timeout = 10  # 10秒超时
-        self.lock_file_handle = None  # 锁文件句柄
-    
-    def _getLockDir(self) -> Path:
-        """获取锁文件目录 - 使用程序所在目录
-        Returns:
-            Path: 锁文件目录路径
-        """
-        # 使用程序所在目录的 locks 子目录
-        lock_dir = Path(__file__).parent / "locks"
-        
-        try:
-            # 尝试创建目录
-            lock_dir.mkdir(parents=True, exist_ok=True)
-            
-            # 测试写入权限
-            test_file = lock_dir / "test_write.tmp"
-            test_file.write_text("test")
-            test_file.unlink()  # 删除测试文件
-            
-            print(f"[鼠标锁] 使用锁文件目录: {lock_dir}")
-            return lock_dir
-            
-        except Exception as e:
-            print(f"[鼠标锁] 无法使用程序目录 {lock_dir}: {e}")
-            # 如果程序目录失败，抛出异常而不是回退
-            raise RuntimeError(f"无法创建锁文件目录: {e}") from e
-    
-    def _getLockOwnerInfo(self) -> str:
-        """获取锁文件占用者信息
-        Returns:
-            str: 锁占用者的信息字符串
-        """
-        try:
-            if not self.lock_file.exists():
-                return "锁文件不存在"
-            
-            with open(self.lock_file, 'r') as f:
-                content = f.read().strip()
-                if not content:
-                    return "锁文件为空"
-                
-                lines = content.split('\n')
-                if len(lines) >= 2:
-                    lock_time = lines[0]
-                    lock_pid = lines[1]
-                    try:
-                        # 计算锁持有时间
-                        elapsed = time.time() - float(lock_time)
-                        return f"占用进程ID: {lock_pid}, 持有时间: {elapsed:.1f}秒"
-                    except ValueError:
-                        return f"占用进程ID: {lock_pid}, 时间戳格式错误"
-                else:
-                    return f"锁文件格式异常: {content[:50]}"
-                    
-        except Exception as e:
-            return f"读取锁文件失败: {e}"
+        self._mutex_handle = None  # Windows Named Mutex 句柄
     
     def _getMouseLock(self) -> bool:
-        """获取鼠标锁 - 使用文件独占锁定机制确保原子性
+        """获取鼠标锁 - 使用 Windows Named Mutex 确保跨进程互斥
         Returns:
-            bool: True表示获取锁成功，False表示获取锁失败
+            bool: True 表示获取锁成功，False 表示超时失败
         """
-        max_retries = 300  # 最大重试次数（30秒）
-        retry_count = 0
-        
-        while retry_count < max_retries:
-            try:
-                # 尝试以独占方式创建锁文件
-                # 使用 'x' 模式：独占创建，如果文件已存在则失败
-                lock_file_handle = open(str(self.lock_file), 'x')
-                
-                try:
-                    # 写入时间戳和进程ID
-                    lock_info = f"{time.time()}\n{os.getpid()}"
-                    lock_file_handle.write(lock_info)
-                    lock_file_handle.flush()
-                    
-                    # 成功创建文件，获取了锁
-                    self.lock_file_handle = lock_file_handle
-                    print(f"[鼠标锁] 成功获取锁 - 进程ID: {os.getpid()}")
-                    return True
-                    
-                except Exception as e:
-                    # 写入失败，关闭文件句柄并删除文件
-                    print(f"[鼠标锁] 写入锁文件失败: {e}")
-                    try:
-                        lock_file_handle.close()
-                        os.remove(str(self.lock_file))
-                    except:
-                        pass
-                    time.sleep(0.05)
-                    retry_count += 1
-                    continue
-                
-            except FileExistsError:
-                # 文件已存在，说明锁被其他进程占用
-                if retry_count % 50 == 0:  # 每5秒打印一次
-                    # 尝试读取锁文件中的占用者信息
-                    lock_owner_info = self._getLockOwnerInfo()
-                    print(f"[鼠标锁] 锁被占用，等待释放 - 当前进程ID: {os.getpid()}, 重试次数: {retry_count}, {lock_owner_info}")
-                
-                # 检查锁是否超时
-                if self._checkLockTimeout():
-                    continue  # 锁已释放，重新尝试获取
-                else:
-                    time.sleep(0.1)  # 等待一段时间后重试
-                    retry_count += 1
-                    continue
-                    
-            except Exception as e:
-                # 其他错误，记录日志并短暂等待后重试
-                if retry_count % 50 == 0:  # 每5秒打印一次
-                    print(f"[鼠标锁] 获取锁时发生异常: {e}, 重试次数: {retry_count}")
-                time.sleep(0.1)
-                retry_count += 1
-                continue
-        
-        # 超过最大重试次数，强制清理并最后一次尝试
-        print(f"[鼠标锁] 超过{max_retries}次获取锁失败，强制清理锁文件")
-        self._forceReleaseLock()
-        
-        # 最后一次尝试
-        try:
-            lock_file_handle = open(str(self.lock_file), 'x')
-            lock_info = f"{time.time()}\n{os.getpid()}"
-            lock_file_handle.write(lock_info)
-            lock_file_handle.flush()
-            self.lock_file_handle = lock_file_handle
-            print(f"[鼠标锁] 强制清理后成功获取锁 - 进程ID: {os.getpid()}")
-            return True
-        except Exception as e:
-            print(f"[鼠标锁] 强制清理后，最终获取锁失败: {e}")
-            return False  # 改为返回False而不是无限等待
-    
-    def _checkLockTimeout(self) -> bool:
-        """检查锁是否超时，如果超时则强制释放
-        Returns:
-            bool: True表示锁已释放，False表示锁仍有效
-        """
-        try:
-            if not self.lock_file.exists():
-                return True
-            
-            # 读取锁文件中的时间戳和进程ID
-            with open(self.lock_file, 'r') as f:
-                content = f.read().strip()
-                if not content:
-                    # 空文件，强制删除
-                    print(f"[鼠标锁] 发现空锁文件，强制释放")
-                    self._forceReleaseLock()
-                    return True
-                
-                lines = content.split('\n')
-                if len(lines) < 1:
-                    print(f"[鼠标锁] 锁文件格式错误，强制释放")
-                    self._forceReleaseLock()
-                    return True
-                
-                # 解析时间戳
-                try:
-                    lock_time = float(lines[0])
-                except ValueError:
-                    print(f"[鼠标锁] 锁文件时间戳格式错误，强制释放")
-                    self._forceReleaseLock()
-                    return True
-                
-                current_time = time.time()
-                
-                # 检查是否超时
-                if current_time - lock_time > self.lock_timeout:
-                    lock_pid = lines[1] if len(lines) > 1 else "未知"
-                    print(f"[鼠标锁] 检测到锁超时（{self.lock_timeout}秒），占用锁的进程ID: {lock_pid}，当前进程ID: {os.getpid()}")
-                    self._forceReleaseLock()
-                    return True
-                
-                # 检查锁的进程是否还存在（Windows版本简化版）
-                if len(lines) > 1:
-                    try:
-                        lock_pid = int(lines[1])
-                        # 简单检查：如果锁的进程ID和当前进程ID相同，说明可能是同一个进程的遗留锁
-                        if lock_pid == os.getpid():
-                            print(f"[鼠标锁] 发现同进程遗留锁，强制释放")
-                            self._forceReleaseLock()
-                            return True
-                    except ValueError:
-                        pass  # 进程ID解析失败，继续其他检查
-                    
+        # 创建或打开命名 Mutex（Global\\ 前缀确保跨会话可见）
+        handle = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\TLBB_MOUSE_LOCK")
+        if not handle:
+            print(f"[鼠标锁] CreateMutexW 失败，错误码: {ctypes.GetLastError()}")
             return False
-            
-        except Exception as e:
-            # 读取失败，可能文件损坏，强制释放
-            self._forceReleaseLock()
+
+        # 等待最多 10 秒
+        WAIT_OBJECT_0   = 0x00000000
+        WAIT_ABANDONED  = 0x00000080  # 上一持有者崩溃，锁已自动释放
+        WAIT_TIMEOUT    = 0x00000102
+        result = ctypes.windll.kernel32.WaitForSingleObject(handle, 10000)
+
+        if result in (WAIT_OBJECT_0, WAIT_ABANDONED):
+            if result == WAIT_ABANDONED:
+                print("[鼠标锁] 检测到上一持有者崩溃，已自动继承锁")
+            self._mutex_handle = handle
             return True
-    
-    def _forceReleaseLock(self):
-        """强制释放锁文件"""
-        try:
-            # 先尝试关闭可能打开的文件句柄
-            if hasattr(self, 'lock_file_handle') and self.lock_file_handle:
-                try:
-                    self.lock_file_handle.close()
-                    self.lock_file_handle = None
-                    print(f"[鼠标锁] 已关闭锁文件句柄")
-                except Exception as handle_e:
-                    print(f"[鼠标锁] 关闭锁文件句柄失败: {handle_e}")
-            
-            if self.lock_file.exists():
-                # 尝试删除锁文件
-                lock_file_path = str(self.lock_file)
-                print(f"[鼠标锁] 正在强制删除锁文件: {lock_file_path}")
-                
-                # 多次尝试删除，处理可能的文件占用情况
-                for attempt in range(3):
-                    try:
-                        os.remove(lock_file_path)
-                        print(f"[鼠标锁] 强制释放锁文件成功")
-                        return
-                    except PermissionError as pe:
-                        print(f"[鼠标锁] 删除锁文件权限被拒绝 (尝试 {attempt + 1}/3): {pe}")
-                        if attempt < 2:
-                            time.sleep(0.1)  # 短暂等待后重试
-                    except FileNotFoundError:
-                        print(f"[鼠标锁] 锁文件已不存在")
-                        return
-                    except Exception as file_e:
-                        print(f"[鼠标锁] 删除锁文件异常 (尝试 {attempt + 1}/3): {file_e}")
-                        if attempt < 2:
-                            time.sleep(0.1)  # 短暂等待后重试
-                
-                # 如果所有尝试都失败，记录详细错误
-                print(f"[鼠标锁] 经过3次尝试，仍无法删除锁文件: {lock_file_path}")
+        else:
+            ctypes.windll.kernel32.CloseHandle(handle)
+            if result == WAIT_TIMEOUT:
+                print("[鼠标锁] 等待超时（10秒），鼠标操作跳过")
             else:
-                print(f"[鼠标锁] 锁文件不存在，无需强制释放")
-                
-        except Exception as e:
-            print(f"[鼠标锁] 强制释放锁文件过程中发生未预期的错误: {e}")
-            print(f"[鼠标锁] 错误类型: {type(e).__name__}")
-            # 尝试获取更多错误信息
-            try:
-                import traceback
-                print(f"[鼠标锁] 错误堆栈: {traceback.format_exc()}")
-            except:
-                pass
-    
+                print(f"[鼠标锁] WaitForSingleObject 失败，返回值: {result:#x}")
+            return False
+
     def _releaseMouseLock(self) -> None:
         """释放鼠标锁"""
-        try:
-            # 先关闭文件句柄
-            if self.lock_file_handle:
-                try:
-                    self.lock_file_handle.close()
-                    self.lock_file_handle = None
-                except Exception as handle_e:
-                    print(f"[鼠标锁] 关闭锁文件句柄失败: {handle_e}")
-        except Exception as e:
-            print(f"[鼠标锁] 处理文件句柄时发生错误: {e}")
-        
-        # 删除锁文件
-        try:
-            if self.lock_file.exists():
-                lock_file_path = str(self.lock_file)
-                os.remove(lock_file_path)
-                print(f"[鼠标锁] 释放锁成功 - 进程ID: {os.getpid()}")
-            else:
-                print(f"[鼠标锁] 锁文件已不存在 - 进程ID: {os.getpid()}")
-        except PermissionError as pe:
-            print(f"[鼠标锁] 释放锁文件权限被拒绝: {pe}")
-        except FileNotFoundError:
-            print(f"[鼠标锁] 锁文件不存在，已释放 - 进程ID: {os.getpid()}")
-        except Exception as e:
-            print(f"[鼠标锁] 释放锁文件失败: {e}")
-            print(f"[鼠标锁] 错误类型: {type(e).__name__}")
-    
+        if self._mutex_handle:
+            ctypes.windll.kernel32.ReleaseMutex(self._mutex_handle)
+            ctypes.windll.kernel32.CloseHandle(self._mutex_handle)
+            self._mutex_handle = None
+
     def getVirtualKeyCode(self, key: str) -> int:
         """获取按键的虚拟键码"""
         key = key.upper()

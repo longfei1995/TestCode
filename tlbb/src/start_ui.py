@@ -1,4 +1,5 @@
 import sys
+import yaml
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                             QGroupBox, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox,
@@ -769,11 +770,6 @@ class GameUI(QMainWindow):
         # 按钮布局
         button_layout = QHBoxLayout()
         
-        # 重置为默认值按钮
-        reset_btn = QPushButton("重置为默认值")
-        reset_btn.clicked.connect(self.resetKeyConfig)
-        button_layout.addWidget(reset_btn)
-        
         # 保存配置按钮
         save_btn = QPushButton("保存按键配置")
         save_btn.clicked.connect(self.saveKeyConfig)
@@ -1118,6 +1114,11 @@ class GameUI(QMainWindow):
         kDefaultKey.ding_wei_fu = saved_keys.get("ding_wei_fu", kDefaultKey.ding_wei_fu)
         kDefaultKey.horse = saved_keys.get("horse", kDefaultKey.horse)
 
+        # 将按键配置写入 key_setting.yaml
+        config_path = os.path.join(kResDir, "key_setting.yaml")
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(saved_keys, f, allow_unicode=True, default_flow_style=False)
+
         # 启用其他选项卡
         self.keys_configured = True
         self.updateTabStates()
@@ -1127,34 +1128,6 @@ class GameUI(QMainWindow):
         self.config_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
 
         QMessageBox.information(self, "提示", "按键配置已保存，其他功能已启用！")
-
-    def resetKeyConfig(self):
-        """重置按键配置为默认值"""
-        # 直接设置默认值
-        default_values = {
-            "pet_attack": "F5",
-            "pet_eat": "F6", 
-            "xue_ji": "F7",
-            "qing_xin": "F8",
-            "ding_wei_fu": "F9",
-            "horse": "F10"
-        }
-        
-        # 更新kDefaultKey对象
-        kDefaultKey.pet_attack = default_values["pet_attack"]
-        kDefaultKey.pet_eat = default_values["pet_eat"]
-        kDefaultKey.xue_ji = default_values["xue_ji"]
-        kDefaultKey.qing_xin = default_values["qing_xin"]
-        kDefaultKey.ding_wei_fu = default_values["ding_wei_fu"]
-        kDefaultKey.horse = default_values["horse"]
-        
-        # 更新UI输入框
-        for attr_name, input_field in self.key_inputs.items():
-            input_field.setText(default_values[attr_name])
-            
-        self.config_status_label.setText("状态：已重置为默认值")
-        self.config_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
-        QMessageBox.information(self, "提示", "按键配置已重置为默认值！")
 
     def updateTabStates(self):
         """根据按键配置状态更新选项卡的启用/禁用状态"""

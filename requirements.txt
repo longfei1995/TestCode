@@ -15,5 +15,8 @@ numpy>=1.20.0
 # 自动化控制库
 pyautogui>=0.9.50
 
+# YAML 解析库（用于持久化按键配置）
+PyYAML>=6.0
+
 # 打包工具
 PyInstaller>=4.5
