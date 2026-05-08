@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-本项目是一款专为《天龙八部》游戏设计的 Windows 自动化助手工具，使用 Python + PyQt5 构建。核心功能包括：循环自动按键（RAID 模式）、自动挖昆吾种子、死亡后自动回点、定时关机，以及基于硬件指纹的许可证授权系统。
+本项目是一款专为《天龙八部》游戏设计的 Windows 自动化助手工具，使用 Python + PyQt5 构建。核心功能包括：循环自动按键（RAID 模式）、死亡后自动回点、定时关机，以及基于硬件指纹的许可证授权系统。
 
 ---
 
@@ -23,9 +23,8 @@
 ## 模块职责
 
 ### `start_ui.py` — 主程序入口 & UI 层
-- `GameUI(QMainWindow)`：主窗口，含 6 个选项卡（按键配置、自动按键、挖种子、自动回点、系统管理、版本历史）。
+- `GameUI(QMainWindow)`：主窗口，含 5 个选项卡（按键配置、自动按键、自动回点、系统管理、版本历史）。
 - `RaidThread(QThread)`：执行循环按键序列，支持峨眉智能治疗逻辑（两级优先级：紧急治疗 → 预防性治疗）。
-- `DigSeedThread(QThread)`：调用 `DigSeed` 完成挖种子流程。
 - `AutoReturnThread(QThread)`：调用 `AutoReturn` 完成回点流程。
 - `UILogStream`：将 `print()` 输出重定向到 UI 日志面板，带时间戳。
 - 所有后台线程通过 `stop_flag` 标志位安全停止，通过 `pyqtSignal` 向主线程发送日志。
@@ -46,14 +45,10 @@
 ### `color_detector.py` — 颜色检测
 - `ColorDetector`：获取窗口内指定坐标的像素 RGB 值，用于判断血条（红色）和蓝条（空/非空）状态。
 
-### `dig_seed.py` — 挖种子逻辑
-- `DigSeed`：完整的昆吾种子任务流程（上马 → 接任务 → 挖种子或打怪 → 提交任务）。
-- `isPersonStop()`：连续截取 3 帧计算平均像素差异，差异低于阈值则判定人物已停止移动。
-- 支持外部 `stop_check_func` 回调以响应 UI 中断请求。
-
 ### `auto_return.py` — 自动回点
 - `AutoReturn`：支持三种场景（雪原、四象天门阵、苗人洞），处理地府逃脱→传送→局部寻路→召唤宠物的完整流程。
 - `_isInHell()` 等场景判断方法用于分支控制。
+- `_moveSceneConfirm()`、`_getDownHorse()`、`_getUpHorse()`、`_isPersonStop()` 为自动回点内部自带的共享动作能力。
 
 ### `game_param.py` — 全局参数
 - 定义血条/蓝条坐标（6 人队伍）、头像坐标、默认按键映射（`kDefaultKey`）、图片路径（`ImagePath`）。
@@ -92,7 +87,6 @@
 ### 图像资源
 - 所有模板图片存放在 `img_src/` 下，路径通过 `game_param.ImagePath` 统一管理。
 - `auto_return/` — 自动回点相关 UI 截图。
-- `kun_wu/` — 挖种子相关 UI 截图。
 
 ### 路径兼容性
 - **始终使用 `game_param.kBaseDir` 或 `game_param.kPicDir`** 构建文件路径，确保打包后路径正确，不得硬编码绝对路径。
@@ -128,4 +122,4 @@ pyinstaller pkg_ui.spec
 1. 该项目**仅支持 Windows**，不应引入跨平台假设。
 2. 游戏坐标（血条位置、头像位置等）均为固定值，修改时须同步更新 `game_param.py`。
 3. 许可证密钥 `"hyh_2025"` 不得泄露或提交到公开仓库。
-4. 新增自动化任务时，参照 `DigSeed` 和 `AutoReturn` 的模式：在独立模块中实现逻辑，在 `start_ui.py` 中创建对应的 `QThread` 子类调用，通过信号回传日志。
+4. 新增自动化任务时，参照 `AutoReturn` 的模式：在独立模块中实现逻辑，在 `start_ui.py` 中创建对应的 `QThread` 子类调用，通过信号回传日志。

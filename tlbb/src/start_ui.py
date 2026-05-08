@@ -13,7 +13,6 @@ from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir, kRe
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
-from dig_seed import DigSeed
 from auto_return import AutoReturn  # 导入AutoReturn类
 from sys_manager import shutdownPC, cancelShutdown
 
@@ -247,96 +246,6 @@ class RaidThread(QThread):
         self.running = False
 
 
-class DigSeedThread(QThread):
-    """后台运行挖种子的线程"""
-    log_signal = pyqtSignal(str)
-    finished_signal = pyqtSignal()
-    
-    def __init__(self, hwnd: int, seed_level: int, loop_count: int, is_dig_seed: bool):
-        super().__init__()
-        self.hwnd = hwnd
-        self.seed_level = seed_level
-        self.loop_count = loop_count
-        self.is_dig_seed = is_dig_seed
-        self.running = True
-        self.original_stdout = None
-    
-    def run(self):
-        try:
-            # 在线程中重定向stdout到UI日志
-            self.original_stdout = sys.stdout
-            sys.stdout = UILogStream(self.log_signal.emit)
-            
-            # 开始挖种子的主要逻辑
-            self.digSeedProcess()
-        except Exception as e:
-            self.log_signal.emit(f"错误：{str(e)}")
-        finally:
-            # 恢复原始stdout
-            if self.original_stdout:
-                sys.stdout = self.original_stdout
-            self.finished_signal.emit()
-    
-    def digSeedProcess(self):
-        """挖种子的主要逻辑"""
-        import time
-        
-        print(f"开始任务...")
-        print(f"种子等级: {self.seed_level}")
-        print(f"循环次数: {self.loop_count}")
-        
-        start_task = "挖种子" if self.is_dig_seed else "打怪"
-        print(f"任务模式: 从{start_task}开始，挖种子和打怪交替进行")
-        
-        # 传递停止检查函数给DigSeed类
-        dig_seed = DigSeed(self.hwnd, stop_check_func=lambda: not self.running)
-        
-        for i in range(self.loop_count):
-            if not self.running:
-                print("收到停止信号，退出任务循环")
-                return
-            
-            # 确定当前轮次应该执行的任务类型（根据起始任务和轮次决定）
-            if self.is_dig_seed:
-                # 选择挖种子开始：第1轮挖种子，第2轮打怪，第3轮挖种子...
-                current_is_dig_seed = (i % 2 == 0)  # 偶数轮号(i=0,2,4...)挖种子，奇数轮号(i=1,3,5...)打怪
-                task_name = "挖种子" if current_is_dig_seed else "打怪"
-            else:
-                # 选择打怪开始：第1轮打怪，第2轮挖种子，第3轮打怪...
-                current_is_dig_seed = (i % 2 == 1)  # 偶数轮号(i=0,2,4...)打怪，奇数轮号(i=1,3,5...)挖种子
-                task_name = "打怪" if (i % 2 == 0) else "挖种子"
-            
-            print(f"=== 第 {i+1}/{self.loop_count} 轮{task_name}开始 ===")
-            
-            try:
-                success = dig_seed.digSeed(seed_level=self.seed_level, is_dig_seed=current_is_dig_seed)
-                if success:
-                    print(f"第 {i+1} 轮{task_name}完成")
-                elif success is False:
-                    # 如果返回False，可能是被中断了
-                    if not self.running:
-                        print(f"第 {i+1} 轮{task_name}被用户中断")
-                        return
-                    else:
-                        print(f"第 {i+1} 轮{task_name}失败, 下马")
-                        dig_seed.getDownHorse()
-            except Exception as e:
-                print(f"第 {i+1} 轮{task_name}出现异常: {str(e)}")
-                if not self.running:
-                    print("检测到停止信号，退出任务循环")
-                    return
-            
-            # 每轮之间的间隔
-            if i < self.loop_count - 1 and self.running:
-                print("等待1秒后开始下一轮...")
-                time.sleep(1)
-        
-        print("**************任务完成**************")
-    
-    def stop(self):
-        self.running = False
-
-
 class AutoReturnThread(QThread):
     """后台运行自动回点的线程"""
     log_signal = pyqtSignal(str)
@@ -481,25 +390,19 @@ class GameUI(QMainWindow):
         auto_key_layout.addWidget(self.createControlArea())
         self.tab_widget.addTab(auto_key_tab, "自动按键")
         
-        # 第三个选项卡：挖种子
-        dig_seed_tab = QWidget()
-        dig_seed_layout = QVBoxLayout(dig_seed_tab)
-        dig_seed_layout.addWidget(self.createDigSeedArea())
-        self.tab_widget.addTab(dig_seed_tab, "挖种子")
-        
-        # 第四个选项卡：自动回点
+        # 第三个选项卡：自动回点
         auto_return_tab = QWidget()
         auto_return_layout = QVBoxLayout(auto_return_tab)
         auto_return_layout.addWidget(self.createAutoReturnArea())
         self.tab_widget.addTab(auto_return_tab, "自动回点")
         
-        # 第五个选项卡：系统管理
+        # 第四个选项卡：系统管理
         system_manager_tab = QWidget()
         system_manager_layout = QVBoxLayout(system_manager_tab)
         system_manager_layout.addWidget(self.createSystemManagerArea())
         self.tab_widget.addTab(system_manager_tab, "系统管理")
         
-        # 第六个选项卡：版本历史
+        # 第五个选项卡：版本历史
         update_log_tab = QWidget()
         update_log_layout = QVBoxLayout(update_log_tab)
         update_log_layout.addWidget(self.createUpdateLogArea())
@@ -792,64 +695,6 @@ class GameUI(QMainWindow):
         
         return group
     
-    def createDigSeedArea(self):
-        """创建挖种子控制区域"""
-        dig_seed_group = QGroupBox("挖种子控制")
-        dig_seed_layout = QVBoxLayout(dig_seed_group)
-        
-        # 1. 参数设置布局
-        param_layout = QHBoxLayout()
-        
-        # 种子等级
-        param_layout.addWidget(QLabel("种子等级:"))
-        self.seed_level_spinbox = QSpinBox()
-        self.seed_level_spinbox.setRange(1, 4)
-        self.seed_level_spinbox.setValue(2)
-        param_layout.addWidget(self.seed_level_spinbox)
-        
-        # 循环次数
-        param_layout.addWidget(QLabel("循环次数:"))
-        self.loop_count_spinbox = QSpinBox()
-        self.loop_count_spinbox.setRange(1, 20)
-        self.loop_count_spinbox.setValue(10)
-        param_layout.addWidget(self.loop_count_spinbox)
-        
-        # 任务类型
-        param_layout.addWidget(QLabel("起始任务:"))
-        self.task_type_combo = QComboBox()
-        self.task_type_combo.addItem("挖种子", True)
-        self.task_type_combo.addItem("打怪", False)
-        param_layout.addWidget(self.task_type_combo)
-        
-        # 帮助图标
-        dig_seed_help_label = QLabel("❓")
-        dig_seed_help_label.setFixedSize(20, 20)
-        dig_seed_help_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        dig_seed_help_label.setToolTip("点击查看挖种子使用说明")
-        dig_seed_help_label.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        dig_seed_help_label.mousePressEvent = lambda ev: self.showDigSeedHelpDialog()
-        param_layout.addWidget(dig_seed_help_label)
-        
-        # 2. 按钮布局
-        button_layout = QHBoxLayout()
-        
-        # 开始按钮
-        self.dig_seed_start_btn = QPushButton("开始挖种子")
-        self.dig_seed_start_btn.clicked.connect(self.startDigSeedThread)
-        self.dig_seed_start_btn.setEnabled(False)  # 初始状态禁用
-        button_layout.addWidget(self.dig_seed_start_btn)
-        
-        # 停止按钮
-        self.dig_seed_stop_btn = QPushButton("停止")
-        self.dig_seed_stop_btn.clicked.connect(self.stopDigSeedThread)
-        self.dig_seed_stop_btn.setEnabled(False)
-        button_layout.addWidget(self.dig_seed_stop_btn)
-        
-        dig_seed_layout.addLayout(param_layout)
-        dig_seed_layout.addLayout(button_layout)
-        
-        return dig_seed_group
-    
     def createAutoReturnArea(self):
         """创建自动回点控制区域"""
         auto_return_group = QGroupBox("自动回点控制")
@@ -994,13 +839,11 @@ class GameUI(QMainWindow):
                 self.window_status_label.setText(f"当前窗口: [{hwnd}] {self.window_combobox.currentText().split('] ', 1)[1] if '] ' in self.window_combobox.currentText() else ''}")
                 self.window_status_label.setStyleSheet("color: green;")
                 self.start_btn.setEnabled(True)
-                self.dig_seed_start_btn.setEnabled(True)  # 同时启用挖种子按钮
                 self.auto_return_start_btn.setEnabled(True)  # 同时启用自动回点按钮
             else:
                 self.window_status_label.setText("当前窗口: 激活失败")
                 self.window_status_label.setStyleSheet("color: red;")
                 self.start_btn.setEnabled(False)
-                self.dig_seed_start_btn.setEnabled(False)
                 self.auto_return_start_btn.setEnabled(False)
                 
         except Exception as e:
@@ -1160,48 +1003,9 @@ class GameUI(QMainWindow):
     def updateTabStates(self):
         """根据按键配置状态更新选项卡的启用/禁用状态"""
         self.tab_widget.setTabEnabled(1, self.keys_configured) # 自动按键
-        self.tab_widget.setTabEnabled(2, self.keys_configured) # 挖种子
-        self.tab_widget.setTabEnabled(3, self.keys_configured) # 自动回点
-        self.tab_widget.setTabEnabled(4, True) # 系统管理
-        self.tab_widget.setTabEnabled(5, True) # 版本历史
-
-    def startDigSeedThread(self):
-        """开始挖种子线程"""
-        hwnd = self.hwnd
-        if hwnd == -1:
-            self.addLog("请先选择有效的窗口")
-            return
-        
-        # 从UI获取参数
-        seed_level = self.seed_level_spinbox.value()
-        loop_count = self.loop_count_spinbox.value()
-        is_dig_seed = self.task_type_combo.currentData()
-        
-        # 显示启动信息
-        self.addLog("***************** 挖种子脚本开始启动 *****************")
-        
-        # 创建线程
-        self.dig_seed_thread = DigSeedThread(hwnd, seed_level, loop_count, is_dig_seed)
-        self.dig_seed_thread.log_signal.connect(self.addLog)
-        self.dig_seed_thread.finished_signal.connect(self.afterDigSeedThreadFinished)
-        
-        self.dig_seed_start_btn.setEnabled(False)
-        self.dig_seed_stop_btn.setEnabled(True)
-        self.activate_btn.setEnabled(False)
-        
-        self.dig_seed_thread.start()
-    
-    def stopDigSeedThread(self):
-        """停止挖种子线程"""
-        if hasattr(self, 'dig_seed_thread') and self.dig_seed_thread and self.dig_seed_thread.isRunning():
-            self.dig_seed_thread.stop()
-            self.dig_seed_thread.wait()
-    
-    def afterDigSeedThreadFinished(self):
-        """挖种子线程结束后的处理"""
-        self.dig_seed_start_btn.setEnabled(True)
-        self.dig_seed_stop_btn.setEnabled(False)
-        self.activate_btn.setEnabled(True)
+        self.tab_widget.setTabEnabled(2, self.keys_configured) # 自动回点
+        self.tab_widget.setTabEnabled(3, True) # 系统管理
+        self.tab_widget.setTabEnabled(4, True) # 版本历史
     
     def startAutoReturnThread(self):
         """开始自动回点线程"""
@@ -1289,22 +1093,6 @@ class GameUI(QMainWindow):
             self.y_coord_label.setVisible(True)
             self.y_coord_input.setVisible(True)
             self.return_immediately_checkbox.setVisible(True)
-
-    def showDigSeedHelpDialog(self):
-        """显示挖种子帮助对话框"""
-        help_text = f"""
-1. 当前按键：
-    定位符 = {kDefaultKey.ding_wei_fu} 骑马 = {kDefaultKey.horse}
-2. 任务追踪：
-    确保任务追踪打开，且只有种子任务。
-        """
-        msg = QMessageBox(self)
-        msg.setWindowTitle("挖种子帮助")
-        msg.setText(help_text)
-        msg.setStandardButtons(QMessageBox.Ok)
-        msg.setDefaultButton(QMessageBox.Ok)
-        msg.resize(500, 400)
-        msg.exec_()
 
     def showAutoReturnHelpDialog(self):
         """显示自动回点帮助对话框"""

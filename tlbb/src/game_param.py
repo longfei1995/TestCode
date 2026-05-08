@@ -57,13 +57,7 @@ class ImagePath:
         hui_yi: str = os.path.join(kPicDir, "auto_return\\8.png")      # 回营按钮
         qian_wang_ji_tan: str = os.path.join(kPicDir, "auto_return\\9.png")      # 前往祭坛按钮
         miao_ren_dong: str = os.path.join(kPicDir, "auto_return\\10.png")     # 苗人洞场景
-        
-    class kun_wu:
-        cheng_huang: str = os.path.join(kPicDir, "kun_wu\\1.png")
-        ti_jiao_ling_yao: str = os.path.join(kPicDir, "kun_wu\\7.png")
-        ren_wu_button: str = os.path.join(kPicDir, "kun_wu\\9.png")
-        mi_yin_ling_qu: str = os.path.join(kPicDir, "kun_wu\\10.png")
-        move_scene_confirm: str = os.path.join(kPicDir, "kun_wu\\11.png")
+        move_scene_confirm: str = os.path.join(kPicDir, "auto_return\\11.png")   # 场景确认框
 
 @dataclass
 class HPBarConfig:

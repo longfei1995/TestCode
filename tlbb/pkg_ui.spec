@@ -56,7 +56,6 @@ a = Analysis(
         'window_manager',
         'color_detector', 
         'keyboard_simulator',
-        'dig_seed',  # 新增的挖种子模块
         'img_match',  # 图像匹配模块
         'auto_return',  # 自动回点模块
         'sys_manager',  # 系统管理模块

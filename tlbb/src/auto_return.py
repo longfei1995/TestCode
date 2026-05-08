@@ -5,12 +5,11 @@
 """
 
 from window_manager import WindowManager
-from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
 from img_match import ImageMatch
-from game_param import ImagePath
-from dig_seed import DigSeed  # 导入DigSeed类
 import time
+import numpy as np
+from game_param import ImagePath, Bbox, kDefaultKey
 
 class AutoReturn:
     def __init__(self, hwnd:int):
@@ -18,8 +17,6 @@ class AutoReturn:
         self.window_manager = WindowManager()
         self.image_match = ImageMatch(self.hwnd)
         self.keyboard_simulator = KeyboardSimulator()
-        # 创建DigSeed实例，用于复用其方法
-        self.dig_seed_helper = DigSeed(hwnd)
     
     def _getWindowCenter(self):
         """动态获取窗口中心坐标"""
@@ -30,20 +27,75 @@ class AutoReturn:
         return center_x, center_y
     
     def _moveSceneConfirm(self):
-        """移动场景确认 - 使用DigSeed类的方法"""
-        return self.dig_seed_helper.moveSceneConfirm()
+        """移动场景确认"""
+        for attempt in range(3):
+            pic_move_scene_confirm_pos = self.image_match.getImageCenterPos(
+                ImagePath.auto_return.move_scene_confirm,
+                max_retries=2,
+                retry_interval=0.3
+            )
+            if pic_move_scene_confirm_pos is not None:
+                self.keyboard_simulator.mouseClick(
+                    pic_move_scene_confirm_pos.x,
+                    pic_move_scene_confirm_pos.y,
+                    self.hwnd
+                )
+                print("点击场景确认框完成....")
+                return True
+
+            if attempt < 2:
+                print(f"第{attempt + 1}次未找到场景确认框，1.0秒后重试...")
+                time.sleep(1.0)
+
+        print("未找到场景确认框")
+        return False
     
     def _getDownHorse(self):
         """下马"""
-        return self.dig_seed_helper.getDownHorse()  
+        self.keyboard_simulator.pressKey(kDefaultKey.horse, self.hwnd)
+        time.sleep(1)
+        print("下马, 等待1秒")
+        return True
     
     def _getUpHorse(self):
         """上马"""
-        return self.dig_seed_helper.getUpHorse()
+        self.keyboard_simulator.pressKey(kDefaultKey.horse, self.hwnd)
+        print("上马, 等待7秒")
+        time.sleep(7)
+        return True
     
     def _isPersonStop(self, max_wait_time=180, threshold=5.0):
         """判断人物是否停止"""
-        return self.dig_seed_helper.isPersonStop(max_wait_time, threshold)
+        bbox = Bbox(395, 573, 651, 648)
+        start_time = time.time()
+
+        print(f"开始持续监测人物是否静止，最长等待{max_wait_time}秒...")
+
+        while time.time() - start_time < max_wait_time:
+            images = []
+
+            for i in range(3):
+                screenshot = self.window_manager.saveBboxImage(self.hwnd, bbox)
+                img_array = np.array(screenshot)
+                images.append(img_array)
+
+                if i < 2:
+                    time.sleep(2)
+
+            diff1 = np.mean(np.abs(images[0].astype(float) - images[1].astype(float)))
+            diff2 = np.mean(np.abs(images[1].astype(float) - images[2].astype(float)))
+            avg_diff = (diff1 + diff2) / 2
+
+            print(f"人物移动检测 - 平均像素差异值: {avg_diff:.2f}")
+
+            if avg_diff < threshold:
+                print(f"人物已静止（差异值 {avg_diff:.2f} < 阈值 {threshold}）")
+                return True
+
+            print(f"人物仍在移动（差异值 {avg_diff:.2f} >= 阈值 {threshold}），继续监测...")
+
+        print(f"等待超时（{max_wait_time}秒），人物可能仍在移动")
+        return False
     
     def _typeNumber(self, number:str):
         """输入数字"""
