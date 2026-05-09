@@ -58,6 +58,7 @@ a = Analysis(
         'keyboard_simulator',
         'img_match',  # 图像匹配模块
         'auto_return',  # 自动回点模块
+        'mouse_clicker',  # 鼠标连点模块
         'sys_manager',  # 系统管理模块
     ],
     hookspath=[],

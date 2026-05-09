@@ -55,7 +55,7 @@ class KeyboardSimulator:
     def __init__(self):
         self._mutex_handle = None  # Windows Named Mutex 句柄
     
-    def _getMouseLock(self) -> bool:
+    def _getMouseLock(self, timeout_ms: int = 10000) -> bool:
         """获取鼠标锁 - 使用 Windows Named Mutex 确保跨进程互斥
         Returns:
             bool: True 表示获取锁成功，False 表示超时失败
@@ -66,11 +66,11 @@ class KeyboardSimulator:
             print(f"[鼠标锁] CreateMutexW 失败，错误码: {ctypes.GetLastError()}")
             return False
 
-        # 等待最多 10 秒
+        # 等待指定时间
         WAIT_OBJECT_0   = 0x00000000
         WAIT_ABANDONED  = 0x00000080  # 上一持有者崩溃，锁已自动释放
         WAIT_TIMEOUT    = 0x00000102
-        result = ctypes.windll.kernel32.WaitForSingleObject(handle, 10000)
+        result = ctypes.windll.kernel32.WaitForSingleObject(handle, timeout_ms)
 
         if result in (WAIT_OBJECT_0, WAIT_ABANDONED):
             if result == WAIT_ABANDONED:
@@ -80,7 +80,7 @@ class KeyboardSimulator:
         else:
             ctypes.windll.kernel32.CloseHandle(handle)
             if result == WAIT_TIMEOUT:
-                print("[鼠标锁] 等待超时（10秒），鼠标操作跳过")
+                print(f"[鼠标锁] 等待超时（{timeout_ms}ms），鼠标操作跳过")
             else:
                 print(f"[鼠标锁] WaitForSingleObject 失败，返回值: {result:#x}")
             return False
@@ -144,6 +144,17 @@ class KeyboardSimulator:
         finally:
             # 确保锁总是被释放
             self._releaseMouseLock()
+
+    def mouseClickScreenPos(self, x: int, y: int, button: str = 'left') -> bool:
+        """点击屏幕绝对坐标位置"""
+        if not self._getMouseLock(1000):
+            print(f"[鼠标锁] 无法获取鼠标锁，屏幕坐标点击失败")
+            return False
+
+        try:
+            return self._mouseClickScreenPos(x, y, button)
+        finally:
+            self._releaseMouseLock()
     
     def _mouceClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
         """执行鼠标点击的具体逻辑"""
@@ -173,28 +184,32 @@ class KeyboardSimulator:
             
             # 移动鼠标到目标位置（瞬间完成）
             win32api.SetCursorPos((target_screen_x, target_screen_y))
-            
-            # 根据按钮类型选择mouse_event标志
-            if button.lower() == 'left':
-                down_flag = win32con.MOUSEEVENTF_LEFTDOWN
-                up_flag = win32con.MOUSEEVENTF_LEFTUP
-            elif button.lower() == 'right':
-                down_flag = win32con.MOUSEEVENTF_RIGHTDOWN
-                up_flag = win32con.MOUSEEVENTF_RIGHTUP
-            elif button.lower() == 'middle':
-                down_flag = win32con.MOUSEEVENTF_MIDDLEDOWN
-                up_flag = win32con.MOUSEEVENTF_MIDDLEUP
-            else:
+
+            mouse_flags = self._getMouseEventFlags(button)
+            if mouse_flags is None:
                 return False
-            
-            # 执行鼠标点击
-            win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.1)  # 减少单次点击持续时间
-            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            down_flag, up_flag = mouse_flags
+
+            self._performMouseClick(down_flag, up_flag, 0.1)
             
             return True
             
         except Exception as e:
+            return False
+
+    def _mouseClickScreenPos(self, x: int, y: int, button: str = 'left') -> bool:
+        """执行屏幕绝对坐标点击"""
+        try:
+            mouse_flags = self._getMouseEventFlags(button)
+            if mouse_flags is None:
+                return False
+
+            down_flag, up_flag = mouse_flags
+            win32api.SetCursorPos((x, y))
+            time.sleep(0.01)
+            self._performMouseClick(down_flag, up_flag, 0.02)
+            return True
+        except Exception:
             return False
     
     def mouseDoubleClick(self, x: int, y: int, hwnd: int = 0, button: str = 'left') -> bool:
@@ -246,37 +261,42 @@ class KeyboardSimulator:
             
             # 移动鼠标到目标位置（瞬间完成）
             win32api.SetCursorPos((target_screen_x, target_screen_y))
-            
-            # 根据按钮类型选择mouse_event标志
-            if button.lower() == 'left':
-                down_flag = win32con.MOUSEEVENTF_LEFTDOWN
-                up_flag = win32con.MOUSEEVENTF_LEFTUP
-            elif button.lower() == 'right':
-                down_flag = win32con.MOUSEEVENTF_RIGHTDOWN
-                up_flag = win32con.MOUSEEVENTF_RIGHTUP
-            elif button.lower() == 'middle':
-                down_flag = win32con.MOUSEEVENTF_MIDDLEDOWN
-                up_flag = win32con.MOUSEEVENTF_MIDDLEUP
-            else:
+
+            mouse_flags = self._getMouseEventFlags(button)
+            if mouse_flags is None:
                 return False
-            
+            down_flag, up_flag = mouse_flags
+
             # 执行第一次点击
-            win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.1) # 20ms
-            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            self._performMouseClick(down_flag, up_flag, 0.1)
             
             # 双击间隔时间（较短，模拟真实双击）
             time.sleep(0.18)  # 缩短双击间隔，更真实
             
             # 执行第二次点击
-            win32api.mouse_event(down_flag, 0, 0, 0, 0)
-            time.sleep(0.1) # 20ms
-            win32api.mouse_event(up_flag, 0, 0, 0, 0)
+            self._performMouseClick(down_flag, up_flag, 0.1)
             
             return True
             
         except Exception as e:
             return False
+
+    def _getMouseEventFlags(self, button: str):
+        """根据按钮类型获取 mouse_event 标志"""
+        button = button.lower()
+        if button == 'left':
+            return win32con.MOUSEEVENTF_LEFTDOWN, win32con.MOUSEEVENTF_LEFTUP
+        if button == 'right':
+            return win32con.MOUSEEVENTF_RIGHTDOWN, win32con.MOUSEEVENTF_RIGHTUP
+        if button == 'middle':
+            return win32con.MOUSEEVENTF_MIDDLEDOWN, win32con.MOUSEEVENTF_MIDDLEUP
+        return None
+
+    def _performMouseClick(self, down_flag: int, up_flag: int, hold_time: float):
+        """执行一次鼠标按下与抬起"""
+        win32api.mouse_event(down_flag, 0, 0, 0, 0)
+        time.sleep(hold_time)
+        win32api.mouse_event(up_flag, 0, 0, 0, 0)
 
     def typeChar(self, char: str, hwnd) -> bool:
         """输入字符 - 使用WM_CHAR消息

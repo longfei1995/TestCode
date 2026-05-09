@@ -1,19 +1,24 @@
 import sys
 import yaml
+import ctypes
+from ctypes import wintypes
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                             QGroupBox, QTextEdit, QSpinBox, QComboBox, QDoubleSpinBox,
-                            QMessageBox, QCheckBox, QTabWidget, QFormLayout, QGridLayout)
+                            QMessageBox, QCheckBox, QTabWidget, QFormLayout, QGridLayout,
+                            QKeySequenceEdit)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QCursor, QKeySequence
 from io import StringIO
 import os
 import time
-from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir, kResDir
+import win32con
+from game_param import kHPBar, kMPBar, kDefaultKey, kProfilePhoto, kBaseDir, kResDir, kMouseClickConfig
 from window_manager import WindowManager
 from color_detector import ColorDetector
 from keyboard_simulator import KeyboardSimulator
 from auto_return import AutoReturn  # 导入AutoReturn类
+from mouse_clicker import MouseClicker
 from sys_manager import shutdownPC, cancelShutdown
 
 class UILogStream:
@@ -329,14 +334,59 @@ class AutoReturnThread(QThread):
         self.running = False
 
 
+class MouseClickThread(QThread):
+    """鼠标连点线程"""
+    log_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal()
+
+    def __init__(self, button: str, interval_ms: int, screen_x: int, screen_y: int):
+        super().__init__()
+        self.button = button
+        self.interval_ms = interval_ms
+        self.screen_x = screen_x
+        self.screen_y = screen_y
+        self.running = True
+        self.original_stdout = None
+        self.mouse_clicker = None
+
+    def run(self):
+        try:
+            self.original_stdout = sys.stdout
+            sys.stdout = UILogStream(self.log_signal.emit)
+
+            self.mouse_clicker = MouseClicker(self.button, self.interval_ms, self.screen_x, self.screen_y)
+            self.mouse_clicker.run()
+        except Exception as e:
+            self.log_signal.emit(f"错误：{str(e)}")
+        finally:
+            if self.original_stdout:
+                sys.stdout = self.original_stdout
+            self.finished_signal.emit()
+
+    def stop(self):
+        self.running = False
+        if self.mouse_clicker:
+            self.mouse_clicker.stop()
+
+
 class GameUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.raid_thread = None
+        self.auto_return_thread = None
+        self.mouse_click_thread = None
         self.window_list = None
         self.hwnd: int = -1         # -1 表示未选择窗口
         self.window_manager = WindowManager()
         self.original_stdout = sys.stdout  # 保存原始stdout
+        self.mouse_hotkeys_ready = False
+        self.mouse_hotkey_registered = False
+        self.mouse_hotkey_defs = {}
+        self.mouse_hotkey_ids = {"start": 1001, "stop": 1002}
+        self.mouse_click_running = False
+        self.mouse_click_target_pos = None
+        self.mouse_click_control_widgets = []
+        self.hotkey_keyboard_simulator = KeyboardSimulator()
         
         # 1. 创建临时日志收集器
         temp_logs = []
@@ -358,7 +408,7 @@ class GameUI(QMainWindow):
     
     def initUI(self):
         self.setWindowTitle('豆子 release date:260311')
-        self.setGeometry(100, 100, 500, 400)
+        self.setGeometry(100, 100, 720, 520)
         
         # 设置窗口图标（如果图标文件存在）
         icon_path = os.path.join(kResDir, "icon.ico")
@@ -396,13 +446,19 @@ class GameUI(QMainWindow):
         auto_return_layout.addWidget(self.createAutoReturnArea())
         self.tab_widget.addTab(auto_return_tab, "自动回点")
         
-        # 第四个选项卡：系统管理
+        # 第四个选项卡：鼠标连点
+        mouse_click_tab = QWidget()
+        mouse_click_layout = QVBoxLayout(mouse_click_tab)
+        mouse_click_layout.addWidget(self.createMouseClickArea())
+        self.tab_widget.addTab(mouse_click_tab, "鼠标连点")
+
+        # 第五个选项卡：系统管理
         system_manager_tab = QWidget()
         system_manager_layout = QVBoxLayout(system_manager_tab)
         system_manager_layout.addWidget(self.createSystemManagerArea())
         self.tab_widget.addTab(system_manager_tab, "系统管理")
         
-        # 第五个选项卡：版本历史
+        # 第六个选项卡：版本历史
         update_log_tab = QWidget()
         update_log_layout = QVBoxLayout(update_log_tab)
         update_log_layout.addWidget(self.createUpdateLogArea())
@@ -774,7 +830,67 @@ class GameUI(QMainWindow):
         auto_return_layout.addLayout(button_layout)
         
         return auto_return_group
-    
+
+    def createMouseClickArea(self):
+        """创建鼠标连点控制区域"""
+        mouse_click_group = QGroupBox("鼠标连点控制")
+        mouse_click_layout = QVBoxLayout(mouse_click_group)
+
+        tip_label = QLabel("说明：按下开始热键时，会记录当前鼠标屏幕位置；连点过程中不会依赖已选游戏窗口。")
+        tip_label.setWordWrap(True)
+        tip_label.setStyleSheet("color: #666; font-size: 12px; padding: 4px 0;")
+        mouse_click_layout.addWidget(tip_label)
+
+        form_layout = QFormLayout()
+
+        self.mouse_click_button_combo = QComboBox()
+        self.mouse_click_button_combo.addItem("左键点击", "left")
+        self.mouse_click_button_combo.addItem("右键点击", "right")
+        button_index = self.mouse_click_button_combo.findData(kMouseClickConfig.button)
+        if button_index >= 0:
+            self.mouse_click_button_combo.setCurrentIndex(button_index)
+        form_layout.addRow("点击类型:", self.mouse_click_button_combo)
+
+        self.mouse_click_interval_spinbox = QSpinBox()
+        self.mouse_click_interval_spinbox.setRange(1, 10000)
+        self.mouse_click_interval_spinbox.setValue(kMouseClickConfig.interval_ms)
+        self.mouse_click_interval_spinbox.setSuffix(" ms")
+        form_layout.addRow("间隔时间:", self.mouse_click_interval_spinbox)
+
+        self.mouse_click_start_hotkey_edit = QKeySequenceEdit()
+        self.mouse_click_start_hotkey_edit.setKeySequence(QKeySequence(kMouseClickConfig.start_hotkey))
+        form_layout.addRow("开始热键:", self.mouse_click_start_hotkey_edit)
+
+        self.mouse_click_stop_hotkey_edit = QKeySequenceEdit()
+        self.mouse_click_stop_hotkey_edit.setKeySequence(QKeySequence(kMouseClickConfig.stop_hotkey))
+        form_layout.addRow("停止热键:", self.mouse_click_stop_hotkey_edit)
+
+        mouse_click_layout.addLayout(form_layout)
+
+        button_layout = QHBoxLayout()
+        self.mouse_click_save_btn = QPushButton("保存并应用")
+        self.mouse_click_save_btn.clicked.connect(self.saveMouseClickConfig)
+        self.mouse_click_save_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
+        button_layout.addWidget(self.mouse_click_save_btn)
+        button_layout.addStretch()
+        mouse_click_layout.addLayout(button_layout)
+
+        self.mouse_click_status_label = QLabel()
+        self.mouse_click_status_label.setWordWrap(True)
+        self.mouse_click_status_label.setStyleSheet("color: #444; font-weight: bold; padding: 4px 0;")
+        mouse_click_layout.addWidget(self.mouse_click_status_label)
+
+        self.mouse_click_control_widgets = [
+            self.mouse_click_button_combo,
+            self.mouse_click_interval_spinbox,
+            self.mouse_click_start_hotkey_edit,
+            self.mouse_click_stop_hotkey_edit,
+            self.mouse_click_save_btn,
+        ]
+        self.updateMouseClickStatusLabel()
+
+        return mouse_click_group
+
     def createUpdateLogArea(self):
         """创建版本历史区域"""
         update_log_group = QGroupBox("版本历史")
@@ -909,12 +1025,333 @@ class GameUI(QMainWindow):
         """清除日志（统一的日志清除方法）"""
         self.log_text.clear()
         self.addLog("日志已清除")
-    
+
+    def showEvent(self, event):
+        """窗口首次显示后注册全局热键"""
+        super().showEvent(event)
+        if not self.mouse_hotkeys_ready:
+            self.mouse_hotkeys_ready = True
+            try:
+                self.applyMouseClickHotkeys(
+                    self.buildMouseHotkeyConfig(QKeySequence(kMouseClickConfig.start_hotkey), "开始热键"),
+                    self.buildMouseHotkeyConfig(QKeySequence(kMouseClickConfig.stop_hotkey), "停止热键"),
+                    show_failure_message=False,
+                )
+                if self.mouse_hotkey_registered:
+                    self.addLog(f"鼠标连点热键已注册：开始 {kMouseClickConfig.start_hotkey}，停止 {kMouseClickConfig.stop_hotkey}")
+                else:
+                    self.addLog("鼠标连点热键未注册，请在“鼠标连点”选项卡中重新保存并应用")
+            except ValueError as e:
+                self.addLog(f"鼠标连点热键初始化失败: {str(e)}")
+                QMessageBox.warning(self, "热键初始化失败", str(e))
+                self.updateMouseClickStatusLabel()
+
+    def nativeEvent(self, eventType, message):
+        """处理 Windows 原生消息，用于接收全局热键"""
+        try:
+            msg = wintypes.MSG.from_address(int(message))
+            if msg.message == win32con.WM_HOTKEY:
+                self.handleMouseHotkey(int(msg.wParam))
+                return True, 0
+        except Exception:
+            pass
+        return super().nativeEvent(eventType, message)
+
+    def handleMouseHotkey(self, hotkey_id: int):
+        """处理鼠标连点热键"""
+        if hotkey_id == self.mouse_hotkey_ids["start"]:
+            self.startMouseClickByHotkey()
+        elif hotkey_id == self.mouse_hotkey_ids["stop"]:
+            self.stopMouseClickThread()
+
     def closeEvent(self, event):
-        """窗口关闭时恢复原始stdout"""
+        """窗口关闭时清理线程、热键并恢复原始stdout"""
+        self.stopMouseClickThread(log_if_idle=False)
+        self.unregisterMouseClickHotkeys()
         if self.original_stdout:
             sys.stdout = self.original_stdout
         event.accept()
+
+    def updateMouseClickStatusLabel(self):
+        """更新鼠标连点状态显示"""
+        if not hasattr(self, "mouse_click_status_label"):
+            return
+
+        hotkey_defs = self.mouse_hotkey_defs or {
+            "start": {"text": kMouseClickConfig.start_hotkey},
+            "stop": {"text": kMouseClickConfig.stop_hotkey},
+        }
+        start_text = hotkey_defs.get("start", {}).get("text", kMouseClickConfig.start_hotkey)
+        stop_text = hotkey_defs.get("stop", {}).get("text", kMouseClickConfig.stop_hotkey)
+        hotkey_text = "已注册" if self.mouse_hotkey_registered else "未注册"
+        running_text = "运行中" if self.mouse_click_running else "未运行"
+        target_text = "未记录"
+        if self.mouse_click_target_pos:
+            target_text = f"({self.mouse_click_target_pos[0]}, {self.mouse_click_target_pos[1]})"
+
+        self.mouse_click_status_label.setText(
+            f"热键状态：{hotkey_text} | 开始：{start_text} | 停止：{stop_text}\n"
+            f"运行状态：{running_text} | 运行起点：{target_text}"
+        )
+        if self.mouse_hotkey_registered:
+            self.mouse_click_status_label.setStyleSheet("color: #2e7d32; font-weight: bold; padding: 4px 0;")
+        else:
+            self.mouse_click_status_label.setStyleSheet("color: #c62828; font-weight: bold; padding: 4px 0;")
+
+    def setMouseClickControlEnabled(self, enabled: bool):
+        """启用或禁用鼠标连点配置控件"""
+        for widget in self.mouse_click_control_widgets:
+            widget.setEnabled(enabled)
+
+    def normalizeMouseHotkeyName(self, key_name: str) -> str:
+        """统一热键按键名，方便映射到 Win32 虚拟键码"""
+        alias_map = {
+            "CTRL": "CTRL",
+            "CONTROL": "CTRL",
+            "ALT": "ALT",
+            "SHIFT": "SHIFT",
+            "META": "WIN",
+            "WIN": "WIN",
+            "CMD": "WIN",
+            "ESC": "ESC",
+            "ESCAPE": "ESC",
+            "DEL": "DELETE",
+            "DELETE": "DELETE",
+            "INS": "INSERT",
+            "INSERT": "INSERT",
+            "PGUP": "PAGEUP",
+            "PAGEUP": "PAGEUP",
+            "PGDOWN": "PAGEDOWN",
+            "PAGEDOWN": "PAGEDOWN",
+            "RETURN": "ENTER",
+            "ENTER": "ENTER",
+            "SPACE": "SPACE",
+            "TAB": "TAB",
+            "BACKSPACE": "BACKSPACE",
+            "HOME": "HOME",
+            "END": "END",
+            "LEFT": "LEFT",
+            "RIGHT": "RIGHT",
+            "UP": "UP",
+            "DOWN": "DOWN",
+        }
+        return alias_map.get(key_name.upper(), key_name.upper())
+
+    def buildMouseHotkeyConfig(self, key_sequence: QKeySequence, hotkey_name: str):
+        """把 QKeySequence 转成 Win32 热键配置"""
+        hotkey_text = key_sequence.toString(QKeySequence.PortableText).strip()
+        if not hotkey_text:
+            raise ValueError(f"{hotkey_name}不能为空")
+        if key_sequence.count() != 1 or "," in hotkey_text:
+            raise ValueError(f"{hotkey_name}只支持单段组合热键")
+
+        parts = [part.strip() for part in hotkey_text.split("+") if part.strip()]
+        if len(parts) < 2:
+            raise ValueError(f"{hotkey_name}至少需要一个修饰键和一个主按键")
+
+        modifiers = 0
+        main_key_name = None
+        modifier_map = {
+            "CTRL": win32con.MOD_CONTROL,
+            "ALT": win32con.MOD_ALT,
+            "SHIFT": win32con.MOD_SHIFT,
+            "WIN": win32con.MOD_WIN,
+        }
+
+        for part in parts:
+            normalized_part = self.normalizeMouseHotkeyName(part)
+            if normalized_part in modifier_map:
+                modifiers |= modifier_map[normalized_part]
+                continue
+
+            if main_key_name is not None:
+                raise ValueError(f"{hotkey_name}格式不支持，请重新设置")
+            main_key_name = normalized_part
+
+        if modifiers == 0:
+            raise ValueError(f"{hotkey_name}必须包含至少一个修饰键")
+        if not main_key_name:
+            raise ValueError(f"{hotkey_name}必须包含一个主按键")
+
+        vk_code = self.hotkey_keyboard_simulator.getVirtualKeyCode(main_key_name)
+        if vk_code == 0:
+            raise ValueError(f"{hotkey_name}不支持按键: {main_key_name}")
+
+        return {
+            "text": hotkey_text,
+            "modifiers": modifiers,
+            "vk_code": vk_code,
+        }
+
+    def _registerMouseHotkey(self, hotkey_id: int, hotkey_config: dict) -> bool:
+        """注册单个全局热键"""
+        hwnd = int(self.winId())
+        success = ctypes.windll.user32.RegisterHotKey(
+            hwnd,
+            hotkey_id,
+            hotkey_config["modifiers"],
+            hotkey_config["vk_code"],
+        )
+        return bool(success)
+
+    def _unregisterMouseHotkey(self, hotkey_id: int):
+        """注销单个全局热键"""
+        hwnd = int(self.winId())
+        ctypes.windll.user32.UnregisterHotKey(hwnd, hotkey_id)
+
+    def unregisterMouseClickHotkeys(self):
+        """注销鼠标连点相关的全局热键"""
+        self._unregisterMouseHotkey(self.mouse_hotkey_ids["start"])
+        self._unregisterMouseHotkey(self.mouse_hotkey_ids["stop"])
+        self.mouse_hotkey_registered = False
+        self.updateMouseClickStatusLabel()
+
+    def _tryRegisterMouseHotkeys(self, start_hotkey: dict, stop_hotkey: dict) -> bool:
+        """尝试注册一组热键，失败时回滚"""
+        if not self._registerMouseHotkey(self.mouse_hotkey_ids["start"], start_hotkey):
+            return False
+
+        if self._registerMouseHotkey(self.mouse_hotkey_ids["stop"], stop_hotkey):
+            return True
+
+        self._unregisterMouseHotkey(self.mouse_hotkey_ids["start"])
+        return False
+
+    def applyMouseClickHotkeys(self, start_hotkey: dict, stop_hotkey: dict, show_failure_message: bool = True) -> bool:
+        """应用鼠标连点热键，支持失败回滚"""
+        previous_hotkey_defs = dict(self.mouse_hotkey_defs)
+        previous_registered = self.mouse_hotkey_registered
+
+        self.unregisterMouseClickHotkeys()
+
+        if self._tryRegisterMouseHotkeys(start_hotkey, stop_hotkey):
+            self.mouse_hotkey_defs = {"start": start_hotkey, "stop": stop_hotkey}
+            self.mouse_hotkey_registered = True
+            self.updateMouseClickStatusLabel()
+            return True
+
+        if previous_registered and previous_hotkey_defs:
+            if self._tryRegisterMouseHotkeys(previous_hotkey_defs["start"], previous_hotkey_defs["stop"]):
+                self.mouse_hotkey_defs = previous_hotkey_defs
+                self.mouse_hotkey_registered = True
+            else:
+                self.mouse_hotkey_defs = previous_hotkey_defs
+                self.mouse_hotkey_registered = False
+        else:
+            self.mouse_hotkey_defs = {
+                "start": {"text": kMouseClickConfig.start_hotkey},
+                "stop": {"text": kMouseClickConfig.stop_hotkey},
+            }
+            self.mouse_hotkey_registered = False
+
+        self.updateMouseClickStatusLabel()
+        if show_failure_message:
+            QMessageBox.warning(self, "热键注册失败", "鼠标连点热键可能已被其他程序占用，已恢复上一组可用热键。")
+        return False
+
+    def _saveMouseClickConfigToFile(self):
+        """将鼠标连点配置写入 key_setting.yaml"""
+        config_path = os.path.join(kResDir, "key_setting.yaml")
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                existing = yaml.safe_load(f) or {}
+        except Exception:
+            existing = {}
+
+        existing["mouse_click_button"] = kMouseClickConfig.button
+        existing["mouse_click_interval_ms"] = kMouseClickConfig.interval_ms
+        existing["mouse_click_start_hotkey"] = kMouseClickConfig.start_hotkey
+        existing["mouse_click_stop_hotkey"] = kMouseClickConfig.stop_hotkey
+
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(existing, f, allow_unicode=True, default_flow_style=False)
+
+    def saveMouseClickConfig(self):
+        """保存鼠标连点配置并应用热键"""
+        old_button = kMouseClickConfig.button
+        old_interval_ms = kMouseClickConfig.interval_ms
+        button = self.mouse_click_button_combo.currentData()
+        interval_ms = self.mouse_click_interval_spinbox.value()
+
+        try:
+            start_hotkey = self.buildMouseHotkeyConfig(self.mouse_click_start_hotkey_edit.keySequence(), "开始热键")
+            stop_hotkey = self.buildMouseHotkeyConfig(self.mouse_click_stop_hotkey_edit.keySequence(), "停止热键")
+        except ValueError as e:
+            QMessageBox.warning(self, "警告", str(e))
+            return
+
+        if start_hotkey["text"] == stop_hotkey["text"]:
+            QMessageBox.warning(self, "警告", "开始热键和停止热键不能相同")
+            return
+
+        old_start_hotkey = kMouseClickConfig.start_hotkey
+        old_stop_hotkey = kMouseClickConfig.stop_hotkey
+
+        if not self.applyMouseClickHotkeys(start_hotkey, stop_hotkey):
+            old_button_index = self.mouse_click_button_combo.findData(old_button)
+            if old_button_index >= 0:
+                self.mouse_click_button_combo.setCurrentIndex(old_button_index)
+            self.mouse_click_interval_spinbox.setValue(old_interval_ms)
+            self.mouse_click_start_hotkey_edit.setKeySequence(QKeySequence(old_start_hotkey))
+            self.mouse_click_stop_hotkey_edit.setKeySequence(QKeySequence(old_stop_hotkey))
+            return
+
+        kMouseClickConfig.button = button
+        kMouseClickConfig.interval_ms = interval_ms
+        kMouseClickConfig.start_hotkey = start_hotkey["text"]
+        kMouseClickConfig.stop_hotkey = stop_hotkey["text"]
+
+        try:
+            self._saveMouseClickConfigToFile()
+        except Exception as e:
+            self.addLog(f"鼠标连点配置写入失败: {str(e)}")
+            QMessageBox.warning(self, "警告", f"鼠标连点配置保存失败：{str(e)}")
+            return
+
+        self.updateMouseClickStatusLabel()
+        self.addLog(f"鼠标连点配置已保存：按钮={button}，间隔={interval_ms}ms，开始={start_hotkey['text']}，停止={stop_hotkey['text']}")
+        QMessageBox.information(self, "提示", "鼠标连点配置已保存并应用！")
+
+    def startMouseClickByHotkey(self):
+        """响应开始鼠标连点热键"""
+        if self.mouse_click_running and self.mouse_click_thread and self.mouse_click_thread.isRunning():
+            self.addLog("鼠标连点正在运行，忽略重复开始热键")
+            return
+
+        cursor_pos = QCursor.pos()
+        self.mouse_click_target_pos = (cursor_pos.x(), cursor_pos.y())
+
+        self.mouse_click_thread = MouseClickThread(
+            kMouseClickConfig.button,
+            kMouseClickConfig.interval_ms,
+            self.mouse_click_target_pos[0],
+            self.mouse_click_target_pos[1],
+        )
+        self.mouse_click_thread.log_signal.connect(self.addLog)
+        self.mouse_click_thread.finished_signal.connect(self.afterMouseClickThreadFinished)
+
+        self.mouse_click_running = True
+        self.setMouseClickControlEnabled(False)
+        self.updateMouseClickStatusLabel()
+
+        self.addLog(f"鼠标连点开始：已记录当前位置 ({self.mouse_click_target_pos[0]}, {self.mouse_click_target_pos[1]})")
+        self.mouse_click_thread.start()
+
+    def stopMouseClickThread(self, log_if_idle: bool = True):
+        """停止鼠标连点线程"""
+        if self.mouse_click_thread and self.mouse_click_thread.isRunning():
+            self.addLog("收到停止信号，正在停止鼠标连点...")
+            self.mouse_click_thread.stop()
+            self.mouse_click_thread.wait()
+        elif log_if_idle:
+            self.addLog("鼠标连点当前未运行")
+
+    def afterMouseClickThreadFinished(self):
+        """鼠标连点线程结束后的处理"""
+        self.mouse_click_running = False
+        self.setMouseClickControlEnabled(True)
+        self.updateMouseClickStatusLabel()
+        self.mouse_click_thread = None
     
     def showHelpDialog(self):
         """显示帮助对话框"""
@@ -1004,8 +1441,9 @@ class GameUI(QMainWindow):
         """根据按键配置状态更新选项卡的启用/禁用状态"""
         self.tab_widget.setTabEnabled(1, self.keys_configured) # 自动按键
         self.tab_widget.setTabEnabled(2, self.keys_configured) # 自动回点
-        self.tab_widget.setTabEnabled(3, True) # 系统管理
-        self.tab_widget.setTabEnabled(4, True) # 版本历史
+        self.tab_widget.setTabEnabled(3, True) # 鼠标连点
+        self.tab_widget.setTabEnabled(4, True) # 系统管理
+        self.tab_widget.setTabEnabled(5, True) # 版本历史
     
     def startAutoReturnThread(self):
         """开始自动回点线程"""

@@ -1,6 +1,10 @@
 ding_wei_fu: F9
 horse: F10
 key_sequence: Q E
+mouse_click_button: left
+mouse_click_interval_ms: 98
+mouse_click_start_hotkey: Ctrl+F11
+mouse_click_stop_hotkey: Ctrl+F12
 pet_attack: F3
 pet_eat: F6
 qing_xin: F6

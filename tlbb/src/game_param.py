@@ -108,10 +108,18 @@ class DefaultKeyConfig:
     horse: str = "F10"
     key_sequence: str = "Q E"
 
+@dataclass
+class MouseClickConfig:
+    button: str = "left"
+    interval_ms: int = 100
+    start_hotkey: str = "Ctrl+F11"
+    stop_hotkey: str = "Ctrl+F12"
+
 # 创建实例
 kHPBar = HPBarConfig()
 kMPBar = MPBarConfig()
 kDefaultKey = DefaultKeyConfig()
+kMouseClickConfig = MouseClickConfig()
 kProfilePhoto = PhotoConfig()
 
 def loadKeyConfig():
@@ -127,6 +135,22 @@ def loadKeyConfig():
         for field in ("pet_attack", "pet_eat", "xue_ji", "qing_xin", "ding_wei_fu", "horse", "key_sequence"):
             if field in data and isinstance(data[field], str):
                 setattr(kDefaultKey, field, data[field])
+
+        mouse_click_button = data.get("mouse_click_button")
+        if isinstance(mouse_click_button, str) and mouse_click_button.lower() in ("left", "right"):
+            kMouseClickConfig.button = mouse_click_button.lower()
+
+        mouse_click_interval_ms = data.get("mouse_click_interval_ms")
+        if isinstance(mouse_click_interval_ms, int) and mouse_click_interval_ms > 0:
+            kMouseClickConfig.interval_ms = mouse_click_interval_ms
+
+        mouse_click_start_hotkey = data.get("mouse_click_start_hotkey")
+        if isinstance(mouse_click_start_hotkey, str) and mouse_click_start_hotkey.strip():
+            kMouseClickConfig.start_hotkey = mouse_click_start_hotkey.strip()
+
+        mouse_click_stop_hotkey = data.get("mouse_click_stop_hotkey")
+        if isinstance(mouse_click_stop_hotkey, str) and mouse_click_stop_hotkey.strip():
+            kMouseClickConfig.stop_hotkey = mouse_click_stop_hotkey.strip()
     except Exception:
         pass
 
